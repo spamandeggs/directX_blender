@@ -15,8 +15,6 @@ horizon :
 	. to provide a common set of transformation and selection tools between an
 	  import/export script and Blender datas (rotate, rescale, filters...)
     . to provide a common set of parsing helpers for new io addons
-	
-the project is also linked
 
 PLY won't be used unfortunately (it's way too slow as far as I tested)
 but directly the re module and certainly minidom for recent file format
