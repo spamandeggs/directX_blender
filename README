@@ -1,0 +1,22 @@
+DirectX import-Export addon for Blender 2.6
+
+first goals :
+
+. to import anything from an .x file.
+  obviously verts, faces but uv, armatures, weights, normals...
+. import .x in binary format too
+
+horizon :
+. export to .x
+. this project is also a prototype for a 'Blender Exchange Layer' project.
+  BEL would be a common layer logically located between an importer/exporter
+  addon and the blender data format, that would allow :
+	. to provide a common set of methods to retrieve/inject objects in Blender
+	. to provide a common set of transformation and selection tools between an
+	  import/export script and Blender datas (rotate, rescale, filters...)
+    . to provide a common set of parsing helpers for new io addons
+	
+the project is also linked
+
+PLY won't be used unfortunately (it's way too slow as far as I tested)
+but directly the re module and certainly minidom for recent file format
