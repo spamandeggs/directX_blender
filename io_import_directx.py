@@ -113,7 +113,7 @@ else :
     print('  minor  : %s'%(minor))
     print('  major  : %s'%(major))
     print('  format : %s'%(format))
-    print('  float  are %s bits'%(accuracy))
+    print('  floats are %s bits'%(accuracy))
     
 if format == 'txt' :
     # FILE READ : STRUCTURE
@@ -160,7 +160,6 @@ if format == 'txt' :
             token['frame'][frame]['matrix'] = c
     
         elif re.match(r_mesh,l) :
-            print('FOUND MESH !!!!!!!!!!!!!!')
             mesh = framename(l)
             tree = tree[0:lvl]
             parent = tree[-1]
@@ -168,10 +167,10 @@ if format == 'txt' :
             #if 'meshes' not in token['frame'][ frame] : token['frame'][frame]['meshes'] = {mesh: mdta }
             #else : token['frame'][frame]['meshes'][mesh] = mdta
             token['frame'][mesh] = mdta
-            print(mesh,token['frame'][mesh])
+            #print(mesh,token['frame'][mesh])
             if lvl > 1 :
                 token['frame'][parent]['childs'].append(mesh)
-                print(parent,token['frame'][parent])
+                #print(parent,token['frame'][parent])
     
     
     readstruct_time = time.clock()-t
