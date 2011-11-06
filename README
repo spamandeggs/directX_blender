@@ -11,10 +11,86 @@ horizon :
 . this project is also a prototype for a 'Blender Exchange Layer' project.
   BEL would be a common layer logically located between an importer/exporter
   addon and the blender data format, that would allow :
-	. to provide a common set of methods to retrieve/inject objects in Blender
-	. to provide a common set of transformation and selection tools between an
-	  import/export script and Blender datas (rotate, rescale, filters...)
+    . to provide a common set of methods to retrieve/inject objects in Blender
+    . to provide a common set of transformation and selection tools between an
+      import/export script and Blender datas (rotate, rescale, filters...)
     . to provide a common set of parsing helpers for new io addons
 
 PLY won't be used unfortunately (it's way too slow as far as I tested)
 but directly the re module and certainly minidom for recent file format
+
+
+day 0 :
+
+. made some disapointing test with ply (from a speed point of view, else it looks really cool)
+. made my own parser
+. nothing imported for now, it's more about self-eduction to .x and concept
+. but it reads the .x structure and can gather some info
+
+resource gathered :
+
+http://paulbourke.net/dataformats/directx/
+http://www.informikon.com/various/the-simplest-skeletal-animation-possible.html
+http://msdn.microsoft.com/en-us/library/windows/desktop/bb173011%28v=VS.85%29.aspx
+http://www.toymaker.info/Games/index.html
+
+
+
+step 1 : read main structure :
+
+    read main token names (any 'template', any 'frame', any 'mesh')
+    stores names in a token directory :
+        token['template'] for templates :
+            token['template'][templatename]
+            token['template'][templatename]['pointer']          (int) chr position in .x file (tell() like*)
+            token['template'][templatename]['line']             (int) line number in .x file
+        token['frame'] for frame and mesh type :
+            token['template'][frame or mesh name]
+            token['template'][frame or mesh name]['pointer']    (int) chr position in .x file (tell() like*)
+            token['template'][frame or mesh name]['line']       (int) line number in .x file
+            token['template'][frame or mesh name]['type']       (str) 'ob/bone' or 'mesh'
+            token['template'][frame or mesh name]['parent']     (str) frame parent of current item
+            token['template'][frame or mesh name]['childs']     (str list) list of child frame or mesh names
+            token['template'][frame or mesh name]['matrix']     (int) for now chr position of FrameTransformMatrix
+
+at the end of step 1 the script prints a tree of these datas
+
+step 2 : read template definitions :
+
+    for each template in dict, populate definitions in it.
+    it creates new fields in each token['template'][templatename]
+    according to values found in .x :
+        token['template'][templatename]['uuid']                 (str) <universally unique identifier>
+        token['template'][templatename]['members']['name']      (str) member name
+        token['template'][templatename]['members']['type']      (str) DWORD,FLOAT etc keywords or template name
+        token['template'][templatename]['restriction']          (str) 'open' , 'closed' , or the specidied (restricted) value
+
+that's all for now.
+
+idea would be to allow 2 steps importation and random access to file :
+
+    . first the file is quickly parsed. we only retrieve main info, nothing about verts, faces etc
+    info like number of mats, textures, objects/mesh/bone trees
+    for now : 150000 lines in 5 secs for step 1
+    . then user select what to import
+    . then the script retrieve selected datas according to selection, using the 'pointer' value
+      to seek() to the needed data, then grab/parse/translate in something usable.
+    . template are used at this point to know how to parse a specific part (adaptive parser)
+	  
+    so far this looks fast.
+	
+tested on windows. can be important because of eol and the code I wrote to compute pointer value.
+(data.tell() is slow)
+only one .x file tested, header is : xof 0303txt 0032 (windows \r\n eol)
+
+don't know a lot about .x format :
+
+uuid : 
+  are the member/restriction always the same for a same uuid/template ?
+  template name can vary for a same uuid ?
+syntax :
+  blank lines IN a stream of a {} section, after ; ?
+  comments // and # IN a stream of data ?
+  '{' and '<something>' and '}' on the same line or '{' '}' are always unique ?
+  
+ 
