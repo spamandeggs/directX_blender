@@ -20,12 +20,22 @@ PLY won't be used unfortunately (it's way too slow as far as I tested)
 but directly the re module and certainly minidom for recent file format
 
 06/11/11
+. now read anything and add it to the 'tree'. this includes unknow tokens.
+. references are recognized. by reference I mean fields like { cube0 } rather than an inline frame cube0 {
+  declaration.
+  I don't know if one item can be referenced several time or referenced before declaration
+  should be.. waiting for a case. for now only one 'parent' token, messages will show up
+  multi references to one token if cases arise. 
+. more permissive syntax : 'frame spam{', 'frame     spam   egg{', 'frame spam egg  {'..
+. comments are recognized (inlines ones not done yet, since still no useful data red :) )
 . header is red
 . found other .x test files here :
   http://www.xbdev.net/3dformats/x/xfileformat.php
   created from 3ds max
+. added .x files in repo. line 70 and following to switch.
 . some token comes with no names, add a noname<00000> to them
 . console gives line number (more useful than char position I guess)
+
 
 05/11/11	day 0 :
 

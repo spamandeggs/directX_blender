@@ -50,12 +50,13 @@ xof 0302txt 0064
 '''
 
 # rename token with noname or too short names
-def framename(l) :
+def getFramename(l) :
     name = l.split(' ')[1].strip()
+    if name and name[-1] == '{' : name = name[:-1]
     if len(name) < 3 :
-        nam = 'noname'
+        nam = l.split(' ')[0].strip()
         id = 0
-        name = '%s%.5d'%(nam,id)
+        name = nam #'%s%.5d'%(nam,id)
         while name in token['frame'] :
             id += 1
             name = '%s%.5d'%(nam,id)
@@ -66,22 +67,35 @@ def framename(l) :
 
     
 # TEST FILES
-#file = bpy.path.abspath('//meshes0.x') SB3
-file = bpy.path.abspath('//wispwind.x') # from max export (http://www.xbdev.net/3dformats/x/xfileformat.php)
+file = bpy.path.abspath('//meshes0.x') #SB3
+#file = bpy.path.abspath('//wispwind.x') # from max export (http://www.xbdev.net/3dformats/x/xfileformat.php)
+#file = bpy.path.abspath('//commented.x') # example from website above (with # and //)
+#file = bpy.path.abspath('//non_inline_data.x') # example from website above (with # and //)
+
+# COMMON REGEX
+space = '[\ \t]{1,}' # at least one space char or a tab
+space0 = '[\ \t]{0,}' # at least one space char or a tab
+
+# DIRECTX REGEX TOKENS
+r_template = r'template' + space + '[\w]*' + space0 + '\{'
+#r_frame = r'Frame' + space + '[\w]*'
+#r_matrix = r'FrameTransformMatrix' + space + '\{[\s\d.,-]*'
+#r_mesh = r'Mesh' + space + '[\W]*'
+r_sectionname = r'[\w]*' + space + '[\w-]*' + space0 + '\{'
+r_refsectionname = r'\{' + space0 + '[\w-]*' + space0 + '\}'
+r_ignore = r'#|//'
 
 
-# DIRECTX TOKENS
-r_template = r'template\ [\w]*'
-r_frame = r'Frame\ [\w]*'
-r_matrix = r'FrameTransformMatrix\ \{[\s\d.,-]*'
-r_mesh = r'Mesh\ {1}[\W]*'
-#r_ignore = r'[#/*]'
+print(r_template)
+
 
 # INTERNAL DX DICT
 token = {
     'template':{},
     'frame':{}
     }
+
+templates = {}
 
 #def readMatrix(arg) :
     
@@ -98,6 +112,7 @@ token = {
     "bzip" MSZip Compressed Binary File
 4       Float Accuracy "0032" 32 bit or "0064" 64 bit
 '''
+
 # assuming there's never comment header and that xof if the 1st
 # sting of the file
 data = open(file,'rb')
@@ -126,53 +141,93 @@ if format == 'txt' :
     ptr = 0
     eol = 0
     
+    # removed from loop (now common to all kind)
+    # keep it a bit for now
+    '''            
+            elif re.match(r_frame,l) :
+                frame = getFramename(l)
+                tree = tree[0:lvl]
+                parent = tree[-1]
+                token['frame'][frame] = {'pointer': ptr, 'line' : c, 'parent': parent, 'childs':[], 'type':'bone'}
+                tree.append(frame)
+                if lvl > 1 : token['frame'][parent]['childs'].append(frame)
+                
+            elif re.match(r_matrix,l) :
+                token['frame'][frame]['matrix'] = c
+        
+            elif re.match(r_mesh,l) :
+                mesh = getFramename(l)
+                tree = tree[0:lvl]
+                parent = tree[-1]
+                mdta =  {'pointer': ptr, 'line' : c, 'parent':parent, 'childs':[] , 'type':'mesh'} # no child, dummy for simpler loops. parenting always through frame ?
+                #if 'meshes' not in token['frame'][ frame] : token['frame'][frame]['meshes'] = {mesh: mdta }
+                #else : token['frame'][frame]['meshes'][mesh] = mdta
+                token['frame'][mesh] = mdta
+                tree.append(mesh)
+                #print(mesh,token['frame'][mesh])
+                if lvl > 1 :
+                    token['frame'][parent]['childs'].append(mesh)
+                    #print(parent,token['frame'][parent])
+        
+    '''
     
-    # assuming Frame token is used
     while data :
     #for l in data.readlines() :
         
         ptr += eol # \r\n.. todo test unix file
         l = data.readline()
-        if l == ''  : break
         c += 1
         eol = len(l)+1
-        #print('%s lines in %.2f\''%(c,time.clock()-t),end='\r')
+        
+
+        if l == ''  : break
+
         l=l.strip()
+        # blank and comment lines
+        if re.match(r_ignore,l) :
+            #print('comment line %s'%l)
+            continue
+
+
+        #print('%s lines in %.2f\''%(c,time.clock()-t),end='\r')
+
         if l == '' : continue
+    
         #print(c,len(l)+1,ptr,data.tell())
         if '{' in l : lvl += 1
         if '}' in l : lvl -= 1
-    
-        #print(c,lvl,len(tree))
+        
+        #print(c,lvl,tree)
         if re.match(r_template,l) :
             tname = l.split(' ')[1]
-            token['template'][tname] = {'pointer' : ptr, 'line' : c}
-            
-        elif re.match(r_frame,l) :
-            frame = framename(l)
+            templates[tname] = {'pointer' : ptr, 'line' : c}
+
+        elif re.match(r_refsectionname,l) :
+            refname = l[1:-1].strip()
+            #print('FOUND reference to %s %s'%(refname,c))
+            #tree = tree[0:lvl]
+            parent = tree[lvl]
+            token['frame'][parent]['childs'].append(refname)
+            if refname in token['frame'] :
+                # case ? can a reference be shared between >1 parents ?
+                if token['frame'][refname]['parent'] != '' :
+                    print('reference to %s already declared')
+                token['frame'][refname]['parent'] = refname
+            else :
+                # case ? can a reference be written before token declaration ?
+                print('reference to %s line %s not declared yet'%(refname,c))
+                
+        elif re.match(r_sectionname,l) :
+            mesh = getFramename(l)
+            #print('FOUND %s %s %s %s'%(mesh,c,lvl,tree))
+            typ = l.split(' ')[0].strip()
             tree = tree[0:lvl]
             parent = tree[-1]
-            token['frame'][frame] = {'pointer': ptr, 'line' : c, 'parent': parent, 'childs':[], 'type':'ob/bone'}
-            tree.append(frame)
-            if lvl > 1 : token['frame'][parent]['childs'].append(frame)
-            
-        elif re.match(r_matrix,l) :
-            token['frame'][frame]['matrix'] = c
-    
-        elif re.match(r_mesh,l) :
-            mesh = framename(l)
-            tree = tree[0:lvl]
-            parent = tree[-1]
-            mdta =  {'pointer': ptr, 'line' : c, 'parent':parent, 'childs':[], 'type':'mesh'}
-            #if 'meshes' not in token['frame'][ frame] : token['frame'][frame]['meshes'] = {mesh: mdta }
-            #else : token['frame'][frame]['meshes'][mesh] = mdta
-            token['frame'][mesh] = mdta
-            #print(mesh,token['frame'][mesh])
+            token['frame'][mesh] = {'pointer': ptr, 'line' : c, 'parent':parent, 'childs':[] , 'type':typ}
+            tree.append(mesh)
             if lvl > 1 :
                 token['frame'][parent]['childs'].append(mesh)
-                #print(parent,token['frame'][parent])
-    
-    
+
     readstruct_time = time.clock()-t
     
     ## DATA TREE CHECK
@@ -180,12 +235,12 @@ if format == 'txt' :
     def walk_dxtree(field,lvl,tab='') :
         for fi, framename in enumerate(field) :
             if lvl > 0 or token['frame'][framename]['parent'] == '' :
-    
+                frame_type = token['frame'][framename]['type']
                 log = '%s (%s)'%( framename, token['frame'][framename]['type'] )
                 line = ('{:7}'.format(token['frame'][framename]['line']))
                 print('%s.%s%s'%(line, tab, log))
                 if fi == len(field) - 1 : tab = tab[:-3] + '   '
-                
+
                 walk_dxtree(token['frame'][framename]['childs'],lvl+1,tab.replace('_',' ')+' |__')
                 
                 if fi == len(field) - 1 and len(token['frame'][framename]['childs']) == 0 :
@@ -194,11 +249,41 @@ if format == 'txt' :
     
     print('\nTREE TEST\n')
     walk_dxtree(token['frame'].keys(),0)
-    
-    
+
+    def readSection(frame) :
+        ptr = frame['pointer']
+        data.seek(ptr)
+        frame['raw'] = {}
+        block = ''
+        lvl = 0
+        c = frame['line']
+        eol = 0
+        while True :
+            ptr += eol 
+            l = data.readline()
+            eol = len(l) + 1
+            l = l.strip()
+            c += 1
+            block += l
+            #if '{' in l :
+            
+            if re.search(r_sectionname,l) :
+                secname = getFramename(l)
+                print('here %s %s'%(secname,c))
+                lvl += 1
+                print(l,c,lvl)
+                
+            if '}' in l :
+                lvl -= 1
+                print(l,c,lvl)
+                if lvl == 0 :
+                    break
+
+        return block
+
     def readTemplate(tpl_name) :
-        ptr = token['template'][tpl_name]['pointer']
-        line = token['template'][tpl_name]['line']
+        ptr = templates[tpl_name]['pointer']
+        line = templates[tpl_name]['line']
         print('> %s at line %s (chr %s)'%(tpl_name,line,ptr))
         data.seek(ptr)
         block = ''
@@ -208,18 +293,18 @@ if format == 'txt' :
             if '}' in l : break
         
         uuid = re.search(r'<.+>',block).group()
-        token['template'][tpl_name]['uuid'] = uuid
-        token['template'][tpl_name]['members'] = []
-        token['template'][tpl_name]['restriction'] = 'closed'
+        templates[tpl_name]['uuid'] = uuid
+        templates[tpl_name]['members'] = []
+        templates[tpl_name]['restriction'] = 'closed'
         
         members = re.search(r'>.+',block).group()[1:-1].split(';')
         for member in members :
             if member == '' : continue
             if member[0] == '[' :
                 if member == '[...]' :
-                    token['template'][tpl_name]['restriction'] = 'open'
+                    templates[tpl_name]['restriction'] = 'open'
                 else :
-                    token['template'][tpl_name]['restriction'] = 'closed'
+                    templates[tpl_name]['restriction'] = 'closed'
                 continue  
             raw = member.split(' ')
             if len(raw) == 2 :
@@ -232,12 +317,12 @@ if format == 'txt' :
                 print('template unknow case ! :\n%s'%(member))
             
             
-            token['template'][tpl_name]['members'].append({
+            templates[tpl_name]['members'].append({
                 'name':mbr_name,
                 'type':typ,
             })
            
-        for k,v in token['template'][tpl_name].items() :
+        for k,v in templates[tpl_name].items() :
             if k != 'members' :
                 print('  %s : %s'%(k,v))
             else :
@@ -248,11 +333,21 @@ if format == 'txt' :
                 
                 
     print('\nTEMPLATE READ/FILL TEST\n')
-    for tpl_name in token['template'] :
-        readTemplate(tpl_name)
-        
+    for tplname in templates :
+        readTemplate(tplname)
+    '''   
+    print('\nMESH verts/faces TEST\n')
+    for framename,frame in token['frame'].items() :
+        if frame['type'] == 'mesh' :
+            print(framename,frame['line'])
+            block = readSection(frame)
+            print (block[0])
+            print (block[-1])
+            print()
+    '''   
     print('%s lines in %.2f\''%(c,readstruct_time),end='\r')
-    
+
+
     
 else :
     print('only .x files in text format are currently supported')
