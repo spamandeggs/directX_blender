@@ -19,8 +19,15 @@ horizon :
 PLY won't be used unfortunately (it's way too slow as far as I tested)
 but directly the re module and certainly minidom for recent file format
 
+06/11/11
+. header is red
+. found other .x test files here :
+  http://www.xbdev.net/3dformats/x/xfileformat.php
+  created from 3ds max
+. some token comes with no names, add a noname<00000> to them
+. console gives line number (more useful than char position I guess)
 
-day 0 :
+05/11/11	day 0 :
 
 . made some disapointing test with ply (from a speed point of view, else it looks really cool)
 . made my own parser
