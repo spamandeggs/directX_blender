@@ -19,7 +19,18 @@ horizon :
 PLY won't be used unfortunately (it's way too slow as far as I tested)
 but directly the re module and certainly minidom for recent file format
 
+actually it's not an addon yet.
+
+TO TEST THE SCRIPT :
+  . create a 'bel' folder in your blender addons folder
+  . copy anything from the repo inside it (except crcf folder, not used)
+  . open io_import_directx.py in a text block 
+  . alt-p
+  . line 73 and next to change the .x file to parse
+
 06/11/11
+. vertices and faces imported from each test files
+. added some info to test yourself in README 
 . switched to binary for .x as text to retrieve eol (pointer bugs). should be ok whatever it's win, mac or unix text format,
   also works with mixed eol.
   it seems python 3.1 can't return a 'line' when data.realine() when read mode is 'rb' (U default and universal ? really ? ;) ) 
