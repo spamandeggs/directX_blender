@@ -71,8 +71,9 @@ def getFramename(l) :
 
     
 # TEST FILES
-#file = bpy.path.abspath('//testfiles/meshes0.x') #SB3
-file = bpy.path.abspath('//testfiles/wispwind_unix.x') # from max export (http://www.xbdev.net/3dformats/x/xfileformat.php)
+file = bpy.path.abspath('//testfiles/meshes0.x') #SB3
+#file = bpy.path.abspath('//testfiles/blender_xport.x')
+#file = bpy.path.abspath('//testfiles/wispwind_unix.x') # from max export (http://www.xbdev.net/3dformats/x/xfileformat.php)
 #file = bpy.path.abspath('//testfiles/wispwind_mac.x') # from max export (http://www.xbdev.net/3dformats/x/xfileformat.php)
 #file = bpy.path.abspath('//testfiles/wispwind.x') # from max export (http://www.xbdev.net/3dformats/x/xfileformat.php)
 #file = bpy.path.abspath('//testfiles/commented.x') # example from website above (with # and //)
@@ -311,31 +312,52 @@ if format == 'txt' :
         verts = [] 
         faces = [] 
         # verts
+        vlookup = []
         e = block.index(';')
         nVerts = int(block[0:e])
-        for i in range(nVerts-1) :
-            s = e + 1
-            e = block.index(',',s)
-            verts.append( Vector3d( block[s:e-1] ) )
+        print('%s verts'%nVerts)
+        eoi = ';,'
         s = e + 1
-        e = block.index(';;',s)
-        verts.append( Vector3d( block[s:e] ) )
-        #print(verts)
-        
+        for i in range(nVerts) :
+            if i+1 == nVerts : eoi = ';;'
+            e = block.index(eoi,s)
+            vert = Vector3d( block[s:e] )
+            #print(i,vert)
+            if vert in verts :
+                vi = verts.index(vert)
+            else :
+                verts.append( vert )
+                vi = len(verts) - 1
+            vlookup.append(vi)
+            s = e + 2
+
         # faces
-        s = e + 2
+        #s = e + 2
         e = block.index(';',s)
         nFaces = int(block[s:e])
-        #print('%s faces'%nFaces)
+        print('%s faces'%nFaces)
+        eoi = ';,'
+        s = e + 1
+        print(vlookup)
         for i in range(nFaces) :
-            s = e + 1
+            if i+1 == nFaces : eoi = ';;'
             e = block.index(';',s)
+            print(block[s:e])
             ftyp = int( block[s:e] ) # tris or quads
             s = e + 1
-            e = block.index(';',s)
-            faces.append( eval(block[s:e]) )
-            e += 1
-        
+            e = block.index(eoi,s)
+            # patch for at least dx blender x export
+            # when fields are not as x3 or x4 array member like 3;v0,v1,v2;,
+            # but as a seq of floats like 3;v0;v1;v2;,
+            tupleface = block[s:e]
+            if ',' not in tupleface : tupleface = tupleface.replace(';',',')
+            tupleface = eval(tupleface)
+            face = []
+            for f in tupleface :
+                face.append(vlookup[f])
+            faces.append( face )
+            s = e + 2
+            print()
         return verts, faces
             
     def nextFileChunk(trunkated=False,chunksize=1024) :
@@ -446,9 +468,7 @@ if format == 'txt' :
     print('\nMESH verts/faces TEST\n')
     for framename,frame in token.items() :
         if frame['type'] == 'Mesh' :
-            print(framename,frame['line'])
             block = readSection(frame)
-            print ('>',block[0:30])
             block = cleanBlock(block)
             verts, faces = readVertices(block)
             createMeshObject(framename, False,verts, [], faces)

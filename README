@@ -28,6 +28,17 @@ TO TEST THE SCRIPT :
   . alt-p
   . line 73 and next to change the .x file to parse
 
+07/11/11
+. added a patch for malformed datas of vertices :
+	# patch for malformed datas ( at least dx blender x export )
+	# when fields are not as x3 or x4 array member like 3;v0,v1,v2;,
+	# but as a seq of floats like 3;v0;v1;v2;,
+. the script now generates linked faces (was not my fault !)
+  > it seems Dx always separate each face :
+  so it defines (vert * linked faces) verts for one needed vert
+  the readvertices loop now remove duplicates at source
+  it uses a verts lookup list to redirect vert id defined in faces
+
 06/11/11
 . vertices and faces imported from each test files
 . added some info to test yourself in README 
