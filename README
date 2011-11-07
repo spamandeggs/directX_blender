@@ -20,6 +20,16 @@ PLY won't be used unfortunately (it's way too slow as far as I tested)
 but directly the re module and certainly minidom for recent file format
 
 06/11/11
+. switched to binary for .x as text to retrieve eol (pointer bugs). should be ok whatever it's win, mac or unix text format,
+  also works with mixed eol.
+  it seems python 3.1 can't return a 'line' when data.realine() when read mode is 'rb' (U default and universal ? really ? ;) ) 
+  when file has mac eol (\r)
+  -> read(1024) in binary, decode, and replace any \r with \n. yes, it doubles lines for windows and lines value is wrong for now
+  -> but the used pointer value is always ok now whatever the file format and still way faster than a data.tell()
+  see CRCF folder to compare output wispwind.x by format.
+. files are still splitted into chunks (1024 B) and readable as lines
+. references : added 'user' fields when token is used. users store a reference with their childs but with a '*' tag at chr0.
+  the tree reflects the changes
 . now read anything and add it to the 'tree'. this includes unknow tokens.
 . references are recognized. by reference I mean fields like { cube0 } rather than an inline frame cube0 {
   declaration.

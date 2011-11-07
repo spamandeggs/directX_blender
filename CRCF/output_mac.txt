@@ -1,0 +1,429 @@
+#mac
+
+TREE TEST
+
+     69. Material__23_02_-_DefaultSub1 (Material)
+     69. |__ user: MeshMaterialList
+     75. |__ TextureFilename00001 (TextureFilename)
+     75.
+     58. Material__23_01_-_DefaultSub0 (Material)
+     58. |__ user: MeshMaterialList
+     64. |__ TextureFilename (TextureFilename)
+     64.
+     80. obj5 (Frame)
+     83. |__ FrameTransformMatrix (FrameTransformMatrix)
+     87. |__ Frame (Frame)
+     90.     |__ FrameTransformMatrix00001 (FrameTransformMatrix)
+     94.     |__ Mesh (Mesh)
+  12330.         |__ MeshNormals (MeshNormals)
+  24567.         |__ MeshMaterialList (MeshMaterialList)
+     58.         |   |__ ref: Material__23_01_-_DefaultSub0 (Material)
+     69.         |   |__ ref: Material__23_02_-_DefaultSub1 (Material)
+  27632.         |__ MeshTextureCoords (MeshTextureCoords)
+  36810.         |__ XSkinMeshHeader (XSkinMeshHeader)
+  36816.         |__ SkinWeights (SkinWeights)
+  38746.         |__ SkinWeights00001 (SkinWeights)
+  39508.         |__ SkinWeights00002 (SkinWeights)
+  41000.         |__ SkinWeights00003 (SkinWeights)
+  43858.         |__ SkinWeights00004 (SkinWeights)
+  44992.         |__ SkinWeights00005 (SkinWeights)
+  46534.         |__ SkinWeights00006 (SkinWeights)
+  47746.         |__ SkinWeights00007 (SkinWeights)
+  49022.         |__ SkinWeights00008 (SkinWeights)
+  49302.         |__ SkinWeights00009 (SkinWeights)
+  50376.         |__ SkinWeights00010 (SkinWeights)
+  53778.         |__ SkinWeights00011 (SkinWeights)
+  53792.         |__ SkinWeights00012 (SkinWeights)
+  54474.         |__ SkinWeights00013 (SkinWeights)
+  55984.         |__ SkinWeights00014 (SkinWeights)
+  58680.         |__ SkinWeights00015 (SkinWeights)
+  58866.         |__ SkinWeights00016 (SkinWeights)
+  61746.         |__ SkinWeights00017 (SkinWeights)
+  62892.         |__ SkinWeights00018 (SkinWeights)
+  64422.         |__ SkinWeights00019 (SkinWeights)
+  64702.         |__ SkinWeights00020 (SkinWeights)
+  65776.         |__ SkinWeights00021 (SkinWeights)
+  68472.         |__ SkinWeights00022 (SkinWeights)
+  68646.         |__ SkinWeights00023 (SkinWeights)
+  68646.
+  68923. Bip01 (Frame)
+  68923. |__ user: Anim-Bip01
+  68926. |__ FrameTransformMatrix00002 (FrameTransformMatrix)
+  68930. |__ Frame00001 (Frame)
+  68933. |   |__ FrameTransformMatrix00003 (FrameTransformMatrix)
+  68933. |
+  68938. |__ Bip01_Pelvis (Frame)
+  68938.     |__ user: Anim-Bip01_Pelvis
+  68941.     |__ FrameTransformMatrix00004 (FrameTransformMatrix)
+  68945.     |__ Frame00002 (Frame)
+  68948.     |   |__ FrameTransformMatrix00005 (FrameTransformMatrix)
+  68948.     |
+  68953.     |__ Bip01_Spine (Frame)
+  68953.         |__ user: Anim-Bip01_Spine
+  68956.         |__ FrameTransformMatrix00006 (FrameTransformMatrix)
+  68960.         |__ Frame00003 (Frame)
+  68963.         |   |__ FrameTransformMatrix00007 (FrameTransformMatrix)
+  68963.         |
+  68968.         |__ Bip01_Spine1 (Frame)
+  68968.         |   |__ user: Anim-Bip01_Spine1
+  68971.         |   |__ FrameTransformMatrix00008 (FrameTransformMatrix)
+  68975.         |   |__ Frame00004 (Frame)
+  68978.         |   |   |__ FrameTransformMatrix00009 (FrameTransformMatrix)
+  68978.         |   |
+  68983.         |   |__ Bip01_Spine2 (Frame)
+  68983.         |       |__ user: Anim-Bip01_Spine2
+  68986.         |       |__ FrameTransformMatrix00010 (FrameTransformMatrix)
+  68990.         |       |__ Frame00005 (Frame)
+  68993.         |       |   |__ FrameTransformMatrix00011 (FrameTransformMatrix)
+  68993.         |       |
+  68998.         |       |__ Bip01_Spine3 (Frame)
+  68998.         |           |__ user: Anim-Bip01_Spine3
+  69001.         |           |__ FrameTransformMatrix00012 (FrameTransformMatrix)
+  69005.         |           |__ Frame00006 (Frame)
+  69008.         |           |   |__ FrameTransformMatrix00013 (FrameTransformMatrix)
+  69008.         |           |
+  69013.         |           |__ Bip01_Neck (Frame)
+  69013.         |               |__ user: Anim-Bip01_Neck
+  69016.         |               |__ FrameTransformMatrix00014 (FrameTransformMatrix)
+  69020.         |               |__ Frame00007 (Frame)
+  69023.         |               |   |__ FrameTransformMatrix00015 (FrameTransformMatrix)
+  69023.         |               |
+  69028.         |               |__ Bip01_Head (Frame)
+  69028.         |               |   |__ user: Anim-Bip01_Head
+  69031.         |               |   |__ FrameTransformMatrix00016 (FrameTransformMatrix)
+  69035.         |               |   |__ Frame00008 (Frame)
+  69038.         |               |       |__ FrameTransformMatrix00017 (FrameTransformMatrix
+  69038.         |               |
+  69044.         |               |__ Bip01_L_Clavicle (Frame)
+  69044.         |               |   |__ user: Anim-Bip01_L_Clavicle
+  69047.         |               |   |__ FrameTransformMatrix00018 (FrameTransformMatrix)
+  69051.         |               |   |__ Frame00009 (Frame)
+  69054.         |               |   |   |__ FrameTransformMatrix00019 (FrameTransformMatrix
+  69054.         |               |   |
+  69059.         |               |   |__ Bip01_L_UpperArm (Frame)
+  69059.         |               |       |__ user: Anim-Bip01_L_UpperArm
+  69062.         |               |       |__ FrameTransformMatrix00020 (FrameTransformMatrix
+  69066.         |               |       |__ Frame00010 (Frame)
+  69069.         |               |       |   |__ FrameTransformMatrix00021 (FrameTransformMa
+  69069.         |               |       |
+  69074.         |               |       |__ Bip01_L_Forearm (Frame)
+  69074.         |               |           |__ user: Anim-Bip01_L_Forearm
+  69077.         |               |           |__ FrameTransformMatrix00022 (FrameTransformMa
+  69081.         |               |           |__ Frame00011 (Frame)
+  69084.         |               |           |   |__ FrameTransformMatrix00023 (FrameTransfo
+  69084.         |               |           |
+  69089.         |               |           |__ Bip01_L_Hand (Frame)
+  69089.         |               |               |__ user: Anim-Bip01_L_Hand
+  69092.         |               |               |__ FrameTransformMatrix00024 (FrameTransfo
+  69096.         |               |               |__ Frame00012 (Frame)
+  69099.         |               |               |   |__ FrameTransformMatrix00025 (FrameTra
+  69099.         |               |               |
+  69104.         |               |               |__ Bip01_L_Finger0 (Frame)
+  69104.         |               |                   |__ user: Anim-Bip01_L_Finger0
+  69107.         |               |                   |__ FrameTransformMatrix00026 (FrameTra
+  69111.         |               |                   |__ Frame00013 (Frame)
+  69114.         |               |                       |__ FrameTransformMatrix00027 (Fram
+  69114.         |               |
+  69124.         |               |__ Bip01_R_Clavicle (Frame)
+  69124.         |                   |__ user: Anim-Bip01_R_Clavicle
+  69127.         |                   |__ FrameTransformMatrix00028 (FrameTransformMatrix)
+  69131.         |                   |__ Frame00014 (Frame)
+  69134.         |                   |   |__ FrameTransformMatrix00029 (FrameTransformMatrix
+  69134.         |                   |
+  69139.         |                   |__ Bip01_R_UpperArm (Frame)
+  69139.         |                       |__ user: Anim-Bip01_R_UpperArm
+  69142.         |                       |__ FrameTransformMatrix00030 (FrameTransformMatrix
+  69146.         |                       |__ Frame00015 (Frame)
+  69149.         |                       |   |__ FrameTransformMatrix00031 (FrameTransformMa
+  69149.         |                       |
+  69154.         |                       |__ Bip01_R_Forearm (Frame)
+  69154.         |                           |__ user: Anim-Bip01_R_Forearm
+  69157.         |                           |__ FrameTransformMatrix00032 (FrameTransformMa
+  69161.         |                           |__ Frame00016 (Frame)
+  69164.         |                           |   |__ FrameTransformMatrix00033 (FrameTransfo
+  69164.         |                           |
+  69169.         |                           |__ Bip01_R_Hand (Frame)
+  69169.         |                               |__ user: Anim-Bip01_R_Hand
+  69172.         |                               |__ FrameTransformMatrix00034 (FrameTransfo
+  69176.         |                               |__ Frame00017 (Frame)
+  69179.         |                               |   |__ FrameTransformMatrix00035 (FrameTra
+  69179.         |                               |
+  69184.         |                               |__ Bip01_R_Finger0 (Frame)
+  69184.         |                                   |__ user: Anim-Bip01_R_Finger0
+  69187.         |                                   |__ FrameTransformMatrix00036 (FrameTra
+  69191.         |                                   |__ Frame00018 (Frame)
+  69194.         |                                       |__ FrameTransformMatrix00037 (Fram
+  69194.         |
+  69208.         |__ Bip01_L_Thigh (Frame)
+  69208.         |   |__ user: Anim-Bip01_L_Thigh
+  69211.         |   |__ FrameTransformMatrix00038 (FrameTransformMatrix)
+  69215.         |   |__ Frame00019 (Frame)
+  69218.         |   |   |__ FrameTransformMatrix00039 (FrameTransformMatrix)
+  69218.         |   |
+  69223.         |   |__ Bip01_L_Calf (Frame)
+  69223.         |       |__ user: Anim-Bip01_L_Calf
+  69226.         |       |__ FrameTransformMatrix00040 (FrameTransformMatrix)
+  69230.         |       |__ Frame00020 (Frame)
+  69233.         |       |   |__ FrameTransformMatrix00041 (FrameTransformMatrix)
+  69233.         |       |
+  69238.         |       |__ Bip01_L_Foot (Frame)
+  69238.         |           |__ user: Anim-Bip01_L_Foot
+  69241.         |           |__ FrameTransformMatrix00042 (FrameTransformMatrix)
+  69245.         |           |__ Frame00021 (Frame)
+  69248.         |           |   |__ FrameTransformMatrix00043 (FrameTransformMatrix)
+  69248.         |           |
+  69253.         |           |__ Bip01_L_Toe0 (Frame)
+  69253.         |               |__ user: Anim-Bip01_L_Toe0
+  69256.         |               |__ FrameTransformMatrix00044 (FrameTransformMatrix)
+  69260.         |               |__ Frame00022 (Frame)
+  69263.         |               |   |__ FrameTransformMatrix00045 (FrameTransformMatrix)
+  69263.         |               |
+  69268.         |               |__ Bip01_L_Toe01 (Frame)
+  69268.         |                   |__ user: Anim-Bip01_L_Toe01
+  69271.         |                   |__ FrameTransformMatrix00046 (FrameTransformMatrix)
+  69275.         |                   |__ Frame00023 (Frame)
+  69278.         |                   |   |__ FrameTransformMatrix00047 (FrameTransformMatrix
+  69278.         |                   |
+  69283.         |                   |__ Bip01_L_Toe02 (Frame)
+  69283.         |                       |__ user: Anim-Bip01_L_Toe02
+  69286.         |                       |__ FrameTransformMatrix00048 (FrameTransformMatrix
+  69290.         |                       |__ Frame00024 (Frame)
+  69293.         |                           |__ FrameTransformMatrix00049 (FrameTransformMa
+  69293.         |
+  69304.         |__ Bip01_R_Thigh (Frame)
+  69304.             |__ user: Anim-Bip01_R_Thigh
+  69307.             |__ FrameTransformMatrix00050 (FrameTransformMatrix)
+  69311.             |__ Frame00025 (Frame)
+  69314.             |   |__ FrameTransformMatrix00051 (FrameTransformMatrix)
+  69314.             |
+  69319.             |__ Bip01_R_Calf (Frame)
+  69319.                 |__ user: Anim-Bip01_R_Calf
+  69322.                 |__ FrameTransformMatrix00052 (FrameTransformMatrix)
+  69326.                 |__ Frame00026 (Frame)
+  69329.                 |   |__ FrameTransformMatrix00053 (FrameTransformMatrix)
+  69329.                 |
+  69334.                 |__ Bip01_R_Foot (Frame)
+  69334.                     |__ user: Anim-Bip01_R_Foot
+  69337.                     |__ FrameTransformMatrix00054 (FrameTransformMatrix)
+  69341.                     |__ Frame00027 (Frame)
+  69344.                     |   |__ FrameTransformMatrix00055 (FrameTransformMatrix)
+  69344.                     |
+  69349.                     |__ Bip01_R_Toe0 (Frame)
+  69349.                         |__ user: Anim-Bip01_R_Toe0
+  69352.                         |__ FrameTransformMatrix00056 (FrameTransformMatrix)
+  69356.                         |__ Frame00028 (Frame)
+  69359.                         |   |__ FrameTransformMatrix00057 (FrameTransformMatrix)
+  69359.                         |
+  69364.                         |__ Bip01_R_Toe01 (Frame)
+  69364.                             |__ user: Anim-Bip01_R_Toe01
+  69367.                             |__ FrameTransformMatrix00058 (FrameTransformMatrix)
+  69371.                             |__ Frame00029 (Frame)
+  69374.                             |   |__ FrameTransformMatrix00059 (FrameTransformMatrix
+  69374.                             |
+  69379.                             |__ Bip01_R_Toe02 (Frame)
+  69379.                                 |__ user: Anim-Bip01_R_Toe02
+  69382.                                 |__ FrameTransformMatrix00060 (FrameTransformMatrix
+  69386.                                 |__ Frame00030 (Frame)
+  69389.                                     |__ FrameTransformMatrix00061 (FrameTransformMa
+  69389.
+  69403. Anim-1 (AnimationSet)
+  69406. |__ Anim-Bip01 (Animation)
+  68923. |   |__ ref: Bip01 (Frame)
+  69410. |   |__ AnimationKey (AnimationKey)
+  69410. |
+  69435. |__ Anim-Bip01_Pelvis (Animation)
+  68938. |   |__ ref: Bip01_Pelvis (Frame)
+  69439. |   |__ AnimationKey00001 (AnimationKey)
+  69439. |
+  69464. |__ Anim-Bip01_Spine (Animation)
+  68953. |   |__ ref: Bip01_Spine (Frame)
+  69468. |   |__ AnimationKey00002 (AnimationKey)
+  69468. |
+  69493. |__ Anim-Bip01_Spine1 (Animation)
+  68968. |   |__ ref: Bip01_Spine1 (Frame)
+  69497. |   |__ AnimationKey00003 (AnimationKey)
+  69497. |
+  69522. |__ Anim-Bip01_Spine2 (Animation)
+  68983. |   |__ ref: Bip01_Spine2 (Frame)
+  69526. |   |__ AnimationKey00004 (AnimationKey)
+  69526. |
+  69551. |__ Anim-Bip01_Spine3 (Animation)
+  68998. |   |__ ref: Bip01_Spine3 (Frame)
+  69555. |   |__ AnimationKey00005 (AnimationKey)
+  69555. |
+  69580. |__ Anim-Bip01_Neck (Animation)
+  69013. |   |__ ref: Bip01_Neck (Frame)
+  69584. |   |__ AnimationKey00006 (AnimationKey)
+  69584. |
+  69609. |__ Anim-Bip01_Head (Animation)
+  69028. |   |__ ref: Bip01_Head (Frame)
+  69613. |   |__ AnimationKey00007 (AnimationKey)
+  69613. |
+  69638. |__ Anim-Bip01_L_Clavicle (Animation)
+  69044. |   |__ ref: Bip01_L_Clavicle (Frame)
+  69642. |   |__ AnimationKey00008 (AnimationKey)
+  69642. |
+  69667. |__ Anim-Bip01_L_UpperArm (Animation)
+  69059. |   |__ ref: Bip01_L_UpperArm (Frame)
+  69671. |   |__ AnimationKey00009 (AnimationKey)
+  69671. |
+  69696. |__ Anim-Bip01_L_Forearm (Animation)
+  69074. |   |__ ref: Bip01_L_Forearm (Frame)
+  69700. |   |__ AnimationKey00010 (AnimationKey)
+  69700. |
+  69725. |__ Anim-Bip01_L_Hand (Animation)
+  69089. |   |__ ref: Bip01_L_Hand (Frame)
+  69729. |   |__ AnimationKey00011 (AnimationKey)
+  69729. |
+  69754. |__ Anim-Bip01_L_Finger0 (Animation)
+  69104. |   |__ ref: Bip01_L_Finger0 (Frame)
+  69758. |   |__ AnimationKey00012 (AnimationKey)
+  69758. |
+  69783. |__ Anim-Bip01_R_Clavicle (Animation)
+  69124. |   |__ ref: Bip01_R_Clavicle (Frame)
+  69787. |   |__ AnimationKey00013 (AnimationKey)
+  69787. |
+  69812. |__ Anim-Bip01_R_UpperArm (Animation)
+  69139. |   |__ ref: Bip01_R_UpperArm (Frame)
+  69816. |   |__ AnimationKey00014 (AnimationKey)
+  69816. |
+  69841. |__ Anim-Bip01_R_Forearm (Animation)
+  69154. |   |__ ref: Bip01_R_Forearm (Frame)
+  69845. |   |__ AnimationKey00015 (AnimationKey)
+  69845. |
+  69870. |__ Anim-Bip01_R_Hand (Animation)
+  69169. |   |__ ref: Bip01_R_Hand (Frame)
+  69874. |   |__ AnimationKey00016 (AnimationKey)
+  69874. |
+  69899. |__ Anim-Bip01_R_Finger0 (Animation)
+  69184. |   |__ ref: Bip01_R_Finger0 (Frame)
+  69903. |   |__ AnimationKey00017 (AnimationKey)
+  69903. |
+  69928. |__ Anim-Bip01_L_Thigh (Animation)
+  69208. |   |__ ref: Bip01_L_Thigh (Frame)
+  69932. |   |__ AnimationKey00018 (AnimationKey)
+  69932. |
+  69957. |__ Anim-Bip01_L_Calf (Animation)
+  69223. |   |__ ref: Bip01_L_Calf (Frame)
+  69961. |   |__ AnimationKey00019 (AnimationKey)
+  69961. |
+  69986. |__ Anim-Bip01_L_Foot (Animation)
+  69238. |   |__ ref: Bip01_L_Foot (Frame)
+  69990. |   |__ AnimationKey00020 (AnimationKey)
+  69990. |
+  70015. |__ Anim-Bip01_L_Toe0 (Animation)
+  69253. |   |__ ref: Bip01_L_Toe0 (Frame)
+  70019. |   |__ AnimationKey00021 (AnimationKey)
+  70019. |
+  70044. |__ Anim-Bip01_L_Toe01 (Animation)
+  69268. |   |__ ref: Bip01_L_Toe01 (Frame)
+  70048. |   |__ AnimationKey00022 (AnimationKey)
+  70048. |
+  70073. |__ Anim-Bip01_L_Toe02 (Animation)
+  69283. |   |__ ref: Bip01_L_Toe02 (Frame)
+  70077. |   |__ AnimationKey00023 (AnimationKey)
+  70077. |
+  70102. |__ Anim-Bip01_R_Thigh (Animation)
+  69304. |   |__ ref: Bip01_R_Thigh (Frame)
+  70106. |   |__ AnimationKey00024 (AnimationKey)
+  70106. |
+  70131. |__ Anim-Bip01_R_Calf (Animation)
+  69319. |   |__ ref: Bip01_R_Calf (Frame)
+  70135. |   |__ AnimationKey00025 (AnimationKey)
+  70135. |
+  70160. |__ Anim-Bip01_R_Foot (Animation)
+  69334. |   |__ ref: Bip01_R_Foot (Frame)
+  70164. |   |__ AnimationKey00026 (AnimationKey)
+  70164. |
+  70189. |__ Anim-Bip01_R_Toe0 (Animation)
+  69349. |   |__ ref: Bip01_R_Toe0 (Frame)
+  70193. |   |__ AnimationKey00027 (AnimationKey)
+  70193. |
+  70218. |__ Anim-Bip01_R_Toe01 (Animation)
+  69364. |   |__ ref: Bip01_R_Toe01 (Frame)
+  70222. |   |__ AnimationKey00028 (AnimationKey)
+  70222. |
+  70247. |__ Anim-Bip01_R_Toe02 (Animation)
+  69379.     |__ ref: Bip01_R_Toe02 (Frame)
+  70251.     |__ AnimationKey00029 (AnimationKey)
+  70251.
+
+TEMPLATE READ/FILL TEST
+
+> XSkinMeshHeader at line 2 (chr 17)
+  restriction : closed
+  line : 2
+  pointer : 17
+  uuid : <3cf169ce-ff7c-44ab-93c0-f78f62d172e2>
+  members :
+    nMaxSkinWeightsPerVertex : WORD
+    nMaxSkinWeightsPerFace : WORD
+    nBones : WORD
+
+> EffectParamFloats at line 38 (chr 742)
+  restriction : closed
+  line : 38
+  pointer : 742
+  uuid : <3014b9a0-62f5-478c-9b86-e4ac9f4e418b>
+  members :
+    ParamName : STRING
+    nFloats : DWORD
+    Floats[nFloats] : FLOAT
+
+> FVFData at line 25 (chr 522)
+  restriction : closed
+  line : 25
+  pointer : 522
+  uuid : <b6e70a0e-8ef9-4e83-94ad-ecc8b0c04897>
+  members :
+    dwFVF : DWORD
+    nDWords : DWORD
+    data[nDWords] : DWORD
+
+> EffectParamDWord at line 51 (chr 985)
+  restriction : closed
+  line : 51
+  pointer : 985
+  uuid : <e13963bc-ae51-4c5d-b00f-cfa3a9d97ce5>
+  members :
+    ParamName : STRING
+    Value : DWORD
+
+> VertexDuplicationIndices at line 9 (chr 163)
+  restriction : closed
+  line : 9
+  pointer : 163
+  uuid : <b8d65549-d7c9-4995-89cf-53a9a8b031e3>
+  members :
+    nIndices : DWORD
+    nOriginalVertices : DWORD
+    indices[nIndices] : DWORD
+
+> EffectInstance at line 32 (chr 642)
+  restriction : open
+  line : 32
+  pointer : 642
+  uuid : <e331f7e4-0559-4cc2-8e99-1cec1657928f>
+  members :
+    EffectFilename : STRING
+
+> SkinWeights at line 16 (chr 317)
+  restriction : closed
+  line : 16
+  pointer : 317
+  uuid : <6f0d123b-bad2-4167-a0d0-80224f25fabb>
+  members :
+    transformNodeName : STRING
+    nWeights : DWORD
+    vertexIndices[nWeights] : DWORD
+    weights[nWeights] : FLOAT
+    matrixOffset : Matrix4x4
+
+> EffectParamString at line 45 (chr 879)
+  restriction : closed
+  line : 45
+  pointer : 879
+  uuid : <1dbc4c88-94c1-46ee-9076-2c28818c9481>
+  members :
+    ParamName : STRING
+    Value : STRING
