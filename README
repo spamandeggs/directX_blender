@@ -26,13 +26,39 @@ TO TEST THE SCRIPT :
   . copy anything from the repo inside it (except crcf folder, not used)
   . open io_import_directx.py in a text block 
   . alt-p
-  . line 73 and next to change the .x file to parse
+  . change options and the .x file to parse at the beginning of the file
 
 07/11/11
-. added a patch for malformed datas of vertices :
-	# patch for malformed datas ( at least dx blender x export )
-	# when fields are not as x3 or x4 array member like 3;v0,v1,v2;,
-	# but as a seq of floats like 3;v0;v1;v2;,
+. uv import
+. generic directx token parser. templates items are used to read datas of any token type
+  a bit slower but cool since it should support non strict standard directx files
+  virtually it can retrieve everything from now supposing the template is know
+  by default or given in the file. calls are now like :
+		nbslots, mats = readToken('MeshMaterialList001') or
+		uv = readToken('uv001') or
+		nVerts, verts, nFaces, faces = readToken('Hydralisk_backbone1') etc
+. removed the specific mesh parser the 'rigid' file is the last before mutation to
+  generic parser. a bit faster but harder to make evolve or adapt. keep it as a faster
+  strict 'branch'
+. added some default templates
+  goals / wip :
+  . to compare template declaration in file and default one.
+    so either use the default one (strict) or the .x one (could differ)
+  . use by the generic data parser to avoid a parser for each kind of token
+. cleaner code (grouping methods, function names, docs etc) 
+  functions separated from calls
+  renamed token dict as tokens etc
+. added tweaks at the beginning of the file :
+	chunksize = 1024     # size of file streams red in a row
+	quickmode = False    # this to only find meshes (no parenting, no other tokens than Mesh ones)
+	showtree = False     # display the entire token tree in the console
+	showtemplate = True  # display template datas found in file
+. added a patch for malformed datas of vertices (meshFaces) :
+	# patch for malformed datas not completely clear yet ( I guess
+	# there's bunch of us when looking at meshface syntax in .x files) :
+	# when array members are like 3;v0,v1,v2;,
+	# and not like 3;v0;v1;v2;, depending on template declarations.
+	# http://paulbourke.net/dataformats/directx/#xfilefrm_Use_of_commas
 . the script now generates linked faces (was not my fault !)
   > it seems Dx always separate each face :
   so it defines (vert * linked faces) verts for one needed vert

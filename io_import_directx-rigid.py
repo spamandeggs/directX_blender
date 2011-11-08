@@ -34,18 +34,18 @@ import bpy
 import time
 import mathutils as bmat
 from mathutils import Vector
-from bel.io_bdata import createMeshObject as writeMesh, uvAsVertsLocation
+from bel.io_bdata import createMeshObject as writeMesh
 
 #############
 ## TEST FILES
 #############
 # you can select the .x file to parse here :
 
-#file = bpy.path.abspath('//testfiles/meshes0.x') #SB3
+file = bpy.path.abspath('//testfiles/meshes0.x') #SB3
 #file = bpy.path.abspath('//testfiles/blender_xport.x')
 #file = bpy.path.abspath('//testfiles/blender_xport_sphere_locate369.x')
 #file = bpy.path.abspath('//testfiles/wispwind_unix.x') # from max export (http://www.xbdev.net/3dformats/x/xfileformat.php)
-file = bpy.path.abspath('//testfiles/wispwind_mac.x') # from max export (http://www.xbdev.net/3dformats/x/xfileformat.php)
+#file = bpy.path.abspath('//testfiles/wispwind_mac.x') # from max export (http://www.xbdev.net/3dformats/x/xfileformat.php)
 #file = bpy.path.abspath('//testfiles/wispwind.x') # from max export (http://www.xbdev.net/3dformats/x/xfileformat.php)
 #file = bpy.path.abspath('//testfiles/commented.x') # example from website above (with # and //)
 #file = bpy.path.abspath('//testfiles/non_inline_data.x') # example from website above (with # and //)
@@ -301,137 +301,97 @@ def cleanBlock(block) :
     return block
 
 
-def readToken(tokenname) :
-    token = tokens[tokenname]
-    datatype = token['type']
-
-    if datatype in templates : tpl = templates[datatype]
-    elif datatype in defaultTemplates : tpl = defaultTemplates[datatype]
-    else :
-        print("can't find any template to read %s (type : %s)"%(tokenname,datatype))
-        return False
-    #print('> use template %s'%datatype)
-    block = readBlock(token)
-    ptr = 0
-    #return dXtemplateData(tpl,block)
-    fields, ptr = dXtemplateData(tpl,block)
-    if datatype in templatesConvert :
-        fields = eval( templatesConvert[datatype] )
-    return fields
-
-def dXtemplateData(tpl,block,ptr=0) :
-    pack = []
-    for member in tpl['members'] :
-        #print(member)
-        dataname = member[-1]
-        datatype = member[0]
-        if datatype ==  'array' :
-            datatype = member[1]
-            s = dataname.index('[') + 1
-            e = dataname.index(']')
-            #print(dataname[s:e])
-            length = eval(dataname[s:e])
-            #print("array %s type %s length defined by '%s' : %s"%(dataname[:s-1],datatype,dataname[s:e],length))
-            dataname = dataname[:s-1]
-            datavalue, ptr = dXarray(block, datatype, length, ptr)
-            #print('back to %s'%(dataname))
-        else :
-            length = 1
-            datavalue, ptr = dXdata(block, datatype, length, ptr)
-
-        if len(str(datavalue)) > 50 : dispvalue = str(datavalue[0:25]) + ' [...] ' + str(datavalue[-25:])
-        else : dispvalue = str(datavalue)
-        #print('%s :  %s %s'%(dataname,dispvalue,type(datavalue)))
-        exec('%s = %s'%(dataname, datavalue))
-        pack.append( datavalue )
-    return pack, ptr
-
-def dXdata(block,datatype,length,s=0) :
-
-    # at last, the data we need
-    # should be a ';' but one meet ',' often, like in meshface
+def dXdata(block,datatype,s=0) :
     if datatype == 'DWORD' :
         e = block.index(';',s+1)
-        try : field = int(block[s:e])
-        except :
-            e = block.index(',',s+1)
-            field = int(block[s:e])
-        return field, e+1
-    elif datatype == 'FLOAT' :
-        e = block.index(';',s+1)
-        return float(block[s:e]), e+1
-    elif datatype == 'STRING' :
-        e = block.index(';',s+1)
-        return block[s:e], e+1
-    else :
-        if datatype in templates : tpl = templates[datatype]
-        elif datatype in defaultTemplates : tpl = defaultTemplates[datatype]
-        else :
-            print("can't find any template for type : %s"%(datatype))
-            return False
-        #print('> use template %s'%datatype)
-        fields, ptr = dXtemplateData(tpl,block,s)
-        if datatype in templatesConvert :
-            fields = eval( templatesConvert[datatype] )
-        return fields, ptr
-    '''
-    # array
-    elif datatype == 'array' : #length > 1 :
-        lst = []
-        #lookup = []
-        eoi = ';,'
-        for i in range(length) :
-            if i+1 == length : eoi = ';;'
-            print(eoi)
-            try : e = block.index(eoi,s)
-            except : print(block,s) ; popo()
-            datavalue, na = dXdata(block[s:e+1],datatype,1)
-            lst.append( datavalue )
+        return int(block[s:e]), e+1
+    elif datatype == 'Vector' : # only as area member
+        co = block.split(';')
+        return Vector((float(co[0]), float(co[1]), float(co[2]))), s + len(block)
 
-            #if dta in lst :
-            #    vi = lst.index(dta)
-            #else :
-            #    lst.append( dta )
-            #    vi = len(lst) - 1
-            #lookup.append(vi)
-            s = e + 2
-        return lst, s #, lookup
-    # not a reserved_type : its another template : recurse
-    '''
-
-def dXarray(block, datatype, length, s=0) :
+    
+def DWORD(block,s=0) :
+    return dXdata(block,'DWORD',s)
+    #e = block.index(';',s+1)
+    #return int(block[s:e]), e+1
+    
+    
+def dXarray(block,length,datatype,s=0) :
     lst = []
-    if datatype in reserved_type :
-        for i in range(length) :
-            datavalue, s = dXdata(block,datatype,1,s)
-            lst.append( datavalue )
-    else :
-        eoi = ';,'
-        for i in range(length) :
-            if i+1 == length : eoi = ';;'
-            #print(eoi)
-            e = block.index(eoi,s)
-            #except : print(block,s) ; popo()
-            datavalue, na = dXdata(block[s:e+1],datatype,1)
-            lst.append( datavalue )
+    lookup = []
+    eoi = ';,'
+    for i in range(length) :
+        if i+1 == length : eoi = ';;'
+        e = block.index(eoi,s)
+        dta, na = dXdata(block[s:e+1],datatype)
+        if dta in lst :
+            vi = lst.index(dta)
+        else :
+            lst.append( dta )
+            vi = len(lst) - 1
+        lookup.append(vi)
+        s = e + 2
+    return lst, s, lookup
 
-            #if dta in lst :
-            #    vi = lst.index(dta)
-            #else :
-            #    lst.append( dta )
-            #    vi = len(lst) - 1
-            #lookup.append(vi)
-            s = e + 2
-    return lst, s #, lookup
-    # not a reserved_type : its another template : recurse
+##
+def readMesh(block) :
+    verts = []
+    faces = []
+    # verts
+    vlookup = []
+    nVerts, s = DWORD(block)
+    #print('%s verts'%nVerts)
+    #eoi = ';,'
+    #s = e + 1
+    verts, s, lookup = dXarray(block,nVerts,'Vector',s)
+    '''
+    for i in range(nVerts) :
+        if i+1 == nVerts : eoi = ';;'
+        e = block.index(eoi,s)
+        vert = Vector3d( block[s:e] )
+        #print(i,vert)
+        if vert in verts :
+            vi = verts.index(vert)
+        else :
+            verts.append( vert )
+            vi = len(verts) - 1
+        vlookup.append(vi)
+        s = e + 2
+    '''
+    # faces
+    nFaces, s = DWORD(block,s)
+    #print('%s faces'%nFaces)
+    eoi = ';,'
+    for i in range(nFaces) :
+        if i+1 == nFaces : eoi = ';;'
+        e = block.index(';',s)
+        #print(block[s:e])
+        ftyp = int( block[s:e] ) # tris or quads
+        s = e + 1
+        e = block.index(eoi,s)
+        # patch for at least dx blender x export
+        # when fields are not as x3 or x4 array member like 3;v0,v1,v2;,
+        # but as a seq of floats like 3;v0;v1;v2;,
+        tupleface = block[s:e]
+        if ',' not in tupleface : tupleface = tupleface.replace(';',',')
+        tupleface = eval(tupleface)
+        #faces.append( tupleface )
 
+        face = []
+        for f in tupleface :
+            face.append(lookup[f])
+        faces.append( face )
+
+        s = e + 2
+    return verts, faces, lookup
+       
 
 ##  read any kind of token data block
 # by default the block is cleaned from inline comment space etc to allow data parsing
 # cleaned = False (retrieve all bytes) is used if one needs to compute a file byte pointer
 # to mimic the file.tell() function and use it with file.seek()
-def readBlock(token, clean=True) :
-    ptr = token['pointer']
+def readBlock(frame, clean=True) :
+    ptr = frame['pointer']
     data.seek(ptr)
     block = ''
     #lvl = 0
@@ -455,12 +415,30 @@ def readBlock(token, clean=True) :
     if clean : block = cleanBlock(block)
     return block
 
-
+def readToken(tokenname) :
+    token = tokens[tokenname]
+    typ = token['typ']
+    if typ in templates : tpl = templates[typ]
+    elif typ in defaultTemplates : tpl = defaultTemplates[typ]
+    else :
+        print("can't find any template to read %s (type : %s)"%(tokenname,typ))
+        return False
+    for member in tpl['members'] :
+        mbrtyp = member[0]
+        mbrname = member[-1]
+        if mbrtyp ==  'array' :
+            ambrtyp = member[1]
+            s = mbrname.index('[')
+            e = mbrname.index(']')
+            print(mbrname[s:e])
+            length = eval(mbrname[s:e])
+        else :
+            length = 1
+        
+        exec('%s = %s'%(mbrname,mbrvalue))
 
 ###################################################
 defaultTemplates={}
-templatesConvert={}
-
 # mesh template
 defaultTemplates['Mesh'] = {
     'uuid' : '<3d82ab44-62da-11cf-ab39-0020af71e433>',
@@ -481,85 +459,7 @@ defaultTemplates['FrameTransformMatrix'] = {
     ]
 }
 
-#returns [ [vid0,vid1,vid2], [vid1,vid2,vid3,vid4] .. ]
-templatesConvert['MeshFace'] = 'fields[1]'
-defaultTemplates['MeshFace'] = {
-    'uuid' : '<3D82AB5F-62DA-11cf-AB39-0020AF71E433>',
-    'restriction' : 'closed',
-    'members' : [
-        ['DWORD', 'nFaceVertexIndices'],
-        ['array', 'DWORD', 'faceVertexIndices[nFaceVertexIndices]']
-    ]
-}
-
-
-defaultTemplates['Vector'] = {
-    'uuid' : '<3d82ab5e-62da-11cf-ab39-0020af71e433>',
-    'restriction' : 'closed',
-    'members' : [
-        ['FLOAT', 'x'],
-        ['FLOAT', 'y'],
-        ['FLOAT', 'z']
-    ]
-}
-
-defaultTemplates['Matrix4x4'] = {
-    'uuid' : '<f6f23f45-7686-11cf-8f52-0040333594a3>',
-    'restriction' : 'closed',
-    'members' : [
-        ['array', 'FLOAT', 'matrix[16]']
-    ]
-}
-
-defaultTemplates['Coords2d'] = {
-    'uuid' : ' <f6f23f44-7686-11cf-8f52-0040333594a3>',
-    'restriction' : 'closed',
-    'members' : [
-        ['FLOAT', 'u'],
-        ['FLOAT', 'v']
-    ]
-}
-
-# returns [ uvAsVertsLocation ]
-templatesConvert['MeshTextureCoords'] = 'fields[1]'
-defaultTemplates['MeshTextureCoords'] = {
-    'uuid' : '<f6f23f40-7686-11cf-8f52-0040333594a3>',
-    'restriction' : 'closed',
-    'members' : [
-        ['DWORD', 'nTextureCoords'],
-        ['array', 'Coords2d', 'textureCoords[nTextureCoords]']
-    ]
-}
-
-# returns [ nMaterials, [ materialindex of each face ] ]
-templatesConvert['MeshMaterialList'] = '[fields[0],fields[2]]'
-defaultTemplates['MeshMaterialList'] = {
-    'uuid' : ' <f6f23f42-7686-11cf-8f52-0040333594a3>',
-    'restriction' : '[Material]',
-    'members' : [
-        ['DWORD', 'nMaterials'],
-        ['DWORD', 'nFaceIndexes'],
-        ['array', 'DWORD', 'faceIndexes[nFaceIndexes]']
-    ]
-}
-
-defaultTemplates['MeshNormals'] = {
-    'uuid' : '<f6f23f43-7686-11cf-8f52-0040333594a3>',
-    'restriction' : 'closed',
-    'members' : [
-        ['DWORD', 'nNormals'],
-        ['array', 'Vector', 'normals[nNormals]'],
-        ['DWORD', 'nFaceNormals'],
-        ['array', 'MeshFace', 'faceNormals[nFaceNormals]']
-    ]
-}
-
-reserved_type = [
-    'DWORD',
-    'FLOAT',
-    'STRING'
-]
-tpl_reserved_type = [
+tpl_member_type = [
     'WORD',
     'DWORD',
     'FLOAT',
@@ -568,25 +468,21 @@ tpl_reserved_type = [
     'UCHAR',
     'BYTE',
     'STRING',
+    'array',
+    'Matrix4x4',
+    'Vector',
     'CSTRING', 
     'UNICODE'
 ]
 '''
-    'array',
-    'Matrix4x4',
-    'Vector',
-'''
-'''
-with * : defined in dXdata
-
 WORD     16 bits
-* DWORD     32 bits
-* FLOAT     IEEE float
+DWORD     32 bits
+FLOAT     IEEE float
 DOUBLE     64 bits
 CHAR     8 bits
 UCHAR     8 bits
 BYTE     8 bits
-* STRING     NULL-terminated string
+STRING     NULL-terminated string
 CSTRING     Formatted C-string (currently unsupported)
 UNICODE     UNICODE string (currently unsupported)
 '''
@@ -648,36 +544,26 @@ if header :
         
         ## DATA IMPORTATION
         print('\nImporting every MESH : \n')
-        for tokenname,token in tokens.items() :
-            if token['type'] == 'Mesh' :
+        for framename,frame in tokens.items() :
+            if frame['type'] == 'Mesh' :
                 verts = []
                 edges = []
                 faces = []
                 matslots = []
                 mats = []
                 uvs = []
-
-                nVerts, verts, nFaces, faces = readToken(tokenname)
-
-                for childname in token['childs'] :
+                datablock = readBlock(frame)
+                verts, faces, vlookup = readMesh(datablock)
+                '''
+                for childname in frame['type']['childs'] :
                     if childname[0] == '*' : childname = childname[1:]
-                    if tokens[childname]['type'] == 'MeshTextureCoords' :
-                        uv = readToken(childname)
-                        uv = uvAsVertsLocation(uv, faces)
+                    tokens[childname]['type'] == 'MeshTextureCoords' :
+                        datablock = readBlock(tokens[childname])
+                        uv = readUV(datablock)
                         uvs.append(uv)
-
-                    elif tokens[childname]['type'] == 'MeshMaterialList' :
-                        nbslots, mats = readToken(childname)
-                        if len(mats) != len(faces) :
-                            mats = [ mats[0] for i in faces ]
-                        for slot in range(nbslots) :
-                            if str(slot) not in bpy.data.materials :
-                                mat = bpy.data.materials.new(name=str(slot))
-                            else :
-                                mat = bpy.data.materials[str(slot)]
-                        matslots.append(mat.name)
-        
-                writeMesh(tokenname, False, verts, edges, faces, matslots, mats, uvs)
+                '''
+    
+                writeMesh(framename, False, verts, edges, faces, matslots, mats, uvs)
                 
     else :
         print('only .x files in text format are currently supported')

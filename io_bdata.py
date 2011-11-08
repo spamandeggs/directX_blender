@@ -43,6 +43,19 @@ def objectBuild(elm, verts, edges=[], faces=[], matslots=[], mats=[], uvs=[] ) :
 def dprint(str,l=0) :
     print(str)
 
+## convert UV given as verts location to blender format
+# eg : [ [v0x,v0y] , [vnx , vny] ... ] -> [ [ v1x,v1y,v0x,v0y,v4x,v4y] ... ]
+# found in directx
+def uvAsVertsLocation(verts2d, faces) :
+    uv = []
+    for f in faces :
+        uvface = []
+        for vi in f :
+            uvface.extend(verts2d[vi])
+        uv.append(uvface)
+    return uv
+
+
 ## material MUST exist before creation of material slots
 ## map only uvmap 0 to its image defined in mat  for now (multitex view)
 def createMeshObject(name, replace=False, verts=[], edges=[], faces=[], matslots=[], mats=[], uvs=[]) :
@@ -107,11 +120,13 @@ def createMeshObject(name, replace=False, verts=[], edges=[], faces=[], matslots
                 mslotid = mesh.faces[uvfi].material_index
                 #mat = mesh.materials[mslotid]
                 #tex = mat.texture_slots[0].texture
-                #img = tex.image
-                if matimage[mslotid] :
-                    img = matimage[mslotid]
-                    uv.data[uvfi].image=img
-                    #uv.data[uvfi].use_image = True
+                try :
+                    if matimage[mslotid] :
+                        img = matimage[mslotid]
+                        uv.data[uvfi].image=img
+                        #uv.data[uvfi].use_image = True
+                except : pass
+                
                 uv.data[uvfi].uv1 = Vector((uvface[0],uvface[1]))
                 uv.data[uvfi].uv2 = Vector((uvface[2],uvface[3]))
                 uv.data[uvfi].uv3 = Vector((uvface[4],uvface[5]))
