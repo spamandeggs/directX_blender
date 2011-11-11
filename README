@@ -22,11 +22,32 @@ but directly the re module and certainly minidom for recent file format
 actually it's not an addon yet.
 
 TO TEST THE SCRIPT :
-  . create a 'bel' folder in your blender addons folder
-  . copy anything from the repo inside it (except crcf folder, not used)
-  . open io_import_directx.py in a text block 
-  . alt-p
-  . change options and the .x file to parse at the beginning of the file
+  . copy the 'bel' folder in /scripts/modules
+  . copy the 'io_directx_bel' in /scripts/addons
+  . start blender
+  . enable then addon in  user prefs > addons
+  . run the script with file > import > directX
+
+11/11/11
+. import materials and textures (basics) : uv and image mapped (multitex mode)
+  and material created with tex slot if any. alpha should be ok.. ?
+. added a smooth options
+. better tolerance with faulty .x (upper/lower case of template names)
+. token names length from x to blender conversion should be ok also (long name cases)
+. corrected a parser pointer error after one array parsing case.
+. added more templates (for mat and tex support)
+. removed texture files from repo in testfile (tex does not match meshes )
+  added some other x files for further tests in binary and compressed format
+  ( http://assimp.svn.sourceforge.net/viewvc/assimp/trunk/test/models/X/ )
+  
+08/11/11
+. turned into an addon (fork from obj import so unused functions atm)
+  enable it in addon, then file > import > directx
+. splitted directx parser (io_directx_bel folder) and bel draft 
+  the bel folder is intended to be located in /scripts/modules (shared components)
+  but it's ok in scripts/addons too (tbd)
+  bel folder (will) includes anything related to blender data helper (read/write)
+. corrected duplicated quotes for x string type
 
 07/11/11
 . uv import
