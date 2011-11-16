@@ -23,10 +23,11 @@
 
 import os
 import re
+import struct, binascii
 import time
 import bpy
 import mathutils as bmat
-from mathutils import Vector
+from mathutils import Vector, Matrix
 import bel.mesh
 import bel.image
 import bel.uv
@@ -44,6 +45,7 @@ def load(operator, context, filepath,
          global_clamp_size=0.0,
          show_tree=False,
          show_templates=False,
+         show_geninfo=False,
          quickmode=False,
          chunksize=False,
          use_ngons=True,
@@ -104,6 +106,41 @@ def load(operator, context, filepath,
     * STRING     NULL-terminated string
     CSTRING     Formatted C-string (currently unsupported)
     UNICODE     UNICODE string (currently unsupported)
+
+BINARY FORMAT
+# TOKENS in little-endian WORDs
+#define TOKEN_NAME         1
+#define TOKEN_STRING       2
+#define TOKEN_INTEGER      3
+#define TOKEN_GUID         5
+#define TOKEN_INTEGER_LIST 6
+#define TOKEN_FLOAT_LIST   7
+#define TOKEN_OBRACE      10
+#define TOKEN_CBRACE      11
+#define TOKEN_OPAREN      12
+#define TOKEN_CPAREN      13
+#define TOKEN_OBRACKET    14
+#define TOKEN_CBRACKET    15
+#define TOKEN_OANGLE      16
+#define TOKEN_CANGLE      17
+#define TOKEN_DOT         18
+#define TOKEN_COMMA       19
+#define TOKEN_SEMICOLON   20
+#define TOKEN_TEMPLATE    31
+#define TOKEN_WORD        40
+#define TOKEN_DWORD       41
+#define TOKEN_FLOAT       42
+#define TOKEN_DOUBLE      43
+#define TOKEN_CHAR        44
+#define TOKEN_UCHAR       45
+#define TOKEN_SWORD       46
+#define TOKEN_SDWORD      47
+#define TOKEN_VOID        48
+#define TOKEN_LPSTR       49
+#define TOKEN_UNICODE     50
+#define TOKEN_CSTRING     51
+#define TOKEN_ARRAY       52
+    
     '''
     
     # COMMON REGEX
@@ -244,15 +281,21 @@ def load(operator, context, filepath,
     def nextFileChunk(data,trunkated=False,chunksize=1024) :
         if chunksize == 0 : chunk = data.read()
         else : chunk = data.read(chunksize)
-        lines = chunk.decode()
-        #if stream : return lines.replace('\r','').replace('\n','')
-        lines = lines.replace('\r','\n').split('\n')
-        if trunkated : lines[0] = trunkated + lines[0]
-        if len(lines) == 1 : 
-            if lines[0] == '' : return None, None
-            return lines, False
-        return lines, lines.pop()
-    
+        if format == 'txt' :
+            lines = chunk.decode('utf-8', errors='ignore')
+            #if stream : return lines.replace('\r','').replace('\n','')
+            lines = lines.replace('\r','\n').split('\n')
+            if trunkated : lines[0] = trunkated + lines[0]
+            if len(lines) == 1 : 
+                if lines[0] == '' : return None, None
+                return lines, False
+            return lines, lines.pop()
+        else :
+            print(chunk)
+            for word in range(0,len(chunk)) :
+                w = chunk[word:word+4]
+                print(word,w,struct.unpack("<l", w),binascii.unhexlify(w))
+
     
     # name unnamed tokens, watchout for x duplicate
     # for blender
@@ -371,7 +414,7 @@ def load(operator, context, filepath,
             pack.append( datavalue )
         return pack, ptr + 1
     
-    def dXdata(block,datatype,length,s=0) :
+    def dXdata(block,datatype,length,s=0,eof=';') :
         #print('dxDTA',block[s])
         # at last, the data we need
         # should be a ';' but one meet ',' often, like in meshface
@@ -383,11 +426,11 @@ def load(operator, context, filepath,
                 field = int(block[s:e])
             return field, e+1
         elif datatype == 'float' :
-            e = block.index(';',s+1)
+            e = block.index(eof,s+1)
             return float(block[s:e]), e+1
         elif datatype == 'string' :
-            e = block.index(';',s+1)
-            return str(block[s+1:e-1]), e+1
+            e = block.index(eof,s+1)
+            return str(block[s+1:e-1]) , e+1
         else :
             if datatype in templates : tpl = templates[datatype]
             elif datatype in defaultTemplates : tpl = defaultTemplates[datatype]
@@ -404,8 +447,10 @@ def load(operator, context, filepath,
         #print('dxARR',block[s])
         lst = []
         if datatype in reserved_type :
+            eoi=','
             for i in range(length) :
-                datavalue, s = dXdata(block,datatype,1,s)
+                if i+1 == length : eoi = ';'
+                datavalue, s = dXdata(block,datatype,1,s,eoi)
                 lst.append( datavalue )
             
         else :
@@ -512,29 +557,43 @@ def load(operator, context, filepath,
         if clean : block = cleanBlock(block)
         return block
     
-
+    
+    # here we go
+    
+    def dprint(string):
+        if show_geninfo :   
+            print(string)
+            
     file = os.path.basename(filepath)
+    
+    print('\nimporting %s...'%file)
+    start = time.clock()
     path = os.path.dirname(filepath)
     filepath = os.fsencode(filepath)
     data = open(filepath,'rb')
     header = dXheader(data)
 
+    if global_matrix is None:
+        global_matrix = mathutils.Matrix()
+
     if header :
         minor, major, format, accuracy = header
-        print('\n%s directX header'%file)
-        print('  minor  : %s'%(minor))
-        print('  major  : %s'%(major))
-        print('  format : %s'%(format))
-        print('  floats are %s bits'%(accuracy))
+        
+        if show_geninfo :
+            print('\n%s directX header'%file)
+            print('  minor  : %s'%(minor))
+            print('  major  : %s'%(major))
+            print('  format : %s'%(format))
+            print('  floats are %s bits'%(accuracy))
 
-        if format == 'txt' :
+        if format in [ 'txt' ] : #, 'bin' ] :
 
             ## FILE READ : STEP 1 : STRUCTURE
-            print('\nBuilding internal .x tree')
+            dprint('\nBuilding internal .x tree')
             t = time.clock()
             tokens, templates, tokentypes = dXtree(data,quickmode)
             readstruct_time = time.clock()-t
-            print('builded tree in %.2f\''%(readstruct_time)) # ,end='\r')
+            dprint('builded tree in %.2f\''%(readstruct_time)) # ,end='\r')
 
             ## populate templates with datas
             for tplname in templates :
@@ -546,14 +605,11 @@ def load(operator, context, filepath,
                 walk_dXtree(tokens.keys())
             
             ## DATA IMPORTATION
-            
-           
-            print('\nImporting every MESH : \n')
-            
+
             for tokenname,token in tokens.items() :
                 if token['type'] == 'mesh' :
                     
-                    print('mesh name : %s'%tokenname)
+                    dprint('\nmesh name : %s'%tokenname)
                     
                     verts = []
                     edges = []
@@ -561,28 +617,33 @@ def load(operator, context, filepath,
                     matslots = []
                     facemats = []
                     uvs = []
+                    groupnames = []
+                    groupindices = []
+                    groupweights = []
 
-                    nVerts, verts, nFaces, faces = readToken(tokenname)
+                    nVerts, verts, nFaces, faces = readToken(tokenname) 
 
-                    print('verts    : %s %s'%(nVerts, len(verts)))
-                    print('faces    : %s %s'%(nFaces, len(faces)))
+                    dprint('verts    : %s %s'%(nVerts, len(verts)))
+                    dprint('faces    : %s %s'%(nFaces, len(faces)))
                     
                     for childname in token['childs'] :
                         # '*' in childname means it's a reference. always performs this test
                         # to retrieve the token
                         if childname[0] == '*' : childname = childname[1:]
                         
+                        # UV
                         if tokens[childname]['type'] == 'meshtexturecoords' :
                             uv = readToken(childname)
                             uv = bel.uv.asVertsLocation(uv, faces)
                             uvs.append(uv)
                             
-                            print('uv       : %s'%(len(uv)))
-
+                            dprint('uv       : %s'%(len(uv)))
+                        
+                        # MATERIALS
                         elif tokens[childname]['type'] == 'meshmateriallist' :
                             nbslots, facemats = readToken(childname)
                             
-                            print('facemats : %s'%(len(facemats)))
+                            dprint('facemats : %s'%(len(facemats)))
 
                             
                             # mat can exist but with no datas so we prepare the mat slot
@@ -603,12 +664,12 @@ def load(operator, context, filepath,
                                 # rename the dummy with theright name
                                 matslots[slotid] = matname
 
-                                #print(matslots)
+                                #dprint(matslots)
                                 # blender material creation (need tuning)
                                 if matname not in bpy.data.materials :
                                     mat = bpy.data.materials.new(name=matname)
                                     (diffuse_color,alpha), power, specCol, emitCol = readToken(matname)
-                                    #print(diffuse_color,alpha, power, specCol, emitCol)
+                                    #dprint(diffuse_color,alpha, power, specCol, emitCol)
                                     mat.diffuse_color = diffuse_color
                                     mat.diffuse_intensity = power
                                     mat.specular_color = specCol
@@ -628,7 +689,7 @@ def load(operator, context, filepath,
                                     for texname in tokens[matname]['childs'] :
                                         if texname[0] == '*' : texname = texname[1:]
                                         [filename] = readToken(texname)
-                                        #print(path+'/'+filename)
+                                        #dprint(path+'/'+filename)
                                         if filename not in bpy.data.images :
                                             img = bel.image.new(path+'/'+filename)
                                         else : img = bpy.data.images[filename]
@@ -655,12 +716,30 @@ def load(operator, context, filepath,
                                 if matname not in bpy.data.materials :
                                     mat = bpy.data.materials.new(name=matname)
                                     
-                            print('matslots : %s'%matslots)
-                    
-                    bel.mesh.write(tokenname, False, verts, edges, faces, matslots, facemats, uvs, smooth=use_smooth_groups)
-                    print('done')
-                    
+                            dprint('matslots : %s'%matslots)
+                            
+                        # VERTICES GROUPS/WEIGHTS
+                        elif tokens[childname]['type'] == 'skinweights' :
+                            groupname, nverts, vindices, vweights, mat = readToken(childname)
 
+                            dprint('vgroup : %s (%s/%s verts)'%(groupname,len(vindices),len(vweights)))
+                            #dprint('matrix : %s\n%s'%(type(mat),mat))
+                            
+                            groupnames.append(groupname)
+                            groupindices.append(vindices)
+                            groupweights.append(vweights)
+                            
+                    ob = bel.mesh.write(tokenname, False, 
+                                        verts, edges, faces, 
+                                        matslots, facemats, uvs, 
+                                        groupnames, groupindices, groupweights,
+                                        smooth=use_smooth_groups)
+                    
+                    ob.matrix_world = global_matrix
+                    dprint('done')
+                    
+            print('done in %.2f\''%(time.clock()-start)) # ,end='\r')
+            
         else :
             print('only .x files in text format are currently supported')
             print('please share your file to make the importer evolve')

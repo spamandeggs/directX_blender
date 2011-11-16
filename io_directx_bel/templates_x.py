@@ -49,6 +49,7 @@ defaultTemplates['vector'.lower()] = {
     ]
 }
 
+templatesConvert['matrix4x4'] = 'Matrix( [fields[0][0:4], fields[0][4:8] , fields[0][8:12] , fields[0][12:16]] )'
 defaultTemplates['matrix4x4'.lower()] = {
     'uuid' : '<f6f23f45-7686-11cf-8f52-0040333594a3>',
     'restriction' : 'closed',
@@ -141,3 +142,24 @@ defaultTemplates['TextureFilename'.lower()] = {
     ]
 }
 
+defaultTemplates['SkinWeights'.lower()] = {
+    'uuid' : '<6f0d123b-bad2-4167-a0d0-80224f25fabb>',
+    'restriction' : 'closed',
+    'members' : [
+        ['string', 'transformNodeName'],
+        ['dword', 'nWeights'],
+        ['array', 'dword', 'vertexIndices[nWeights]'],
+        ['array', 'float', 'weights[nWeights]'],
+        ['matrix4x4', 'matrixOffset']
+    ]
+}
+
+defaultTemplates['XSkinMeshHeader'.lower()] = {
+    'uuid' : '3cf169ce-ff7c-44ab-93c0-f78f62d172e2',
+    'restriction' : 'closed',
+    'members' : [
+        ['word', 'nMaxSkinWeightsPerVertex'],
+        ['word', 'nMaxSkinWeightsPerFace'],
+        ['word', 'nBones']
+    ]
+}

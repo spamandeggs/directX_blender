@@ -1,12 +1,18 @@
 import bpy
 import bel.fs
 
+debuglevel = 0
+
+def dprint(str,l=2) :
+    if l <= debuglevel :
+        print(str)
+
 def new(path,name=False,premul = True) :
     path = bel.fs.clean(path)
     if name == False : name = path.split('/')[-1]
     if name not in bpy.data.images :        
         if bel.fs.isfile(path) == False :
-            print('Texture image not found')
+            dprint('Texture image not found')
             return False
         img = bpy.data.images.load(filepath=path)
         img.name = name

@@ -1,15 +1,15 @@
 # Blender directX importer
 bl_info = {
-    "name": "DirectX Importer (faces, uv from .x as text files for now)",
-    "description": "early tests",
+    "name": "DirectX Importer",
+    "description": "beta release, thanks to report errors",
     "author": "Littleneo / Jerome Mahieux",
-    "version": (0, 4),
+    "version": (0, 7),
     "blender": (2, 6, 0),
     "api": 41098,
     "location": "",
     "warning": "",
-    "wiki_url": "",
-    "tracker_url": "",
+    "wiki_url": "https://github.com/littleneo/directX_blender/wiki",
+    "tracker_url": "https://github.com/littleneo/directX_blender/issues",
     "category": "Import-Export",
     "dependencies": ""
 }
@@ -54,15 +54,21 @@ class ImportX(bpy.types.Operator, ImportHelper):
             options={'HIDDEN'},
             )
     show_tree = BoolProperty(
-            name="Show items tree",
+            name="Show x tokens tree",
             description="display relationships between x items in the console",
             default=False,
             )
     show_templates = BoolProperty(
-            name="Show templates",
+            name="Show x templates",
             description="display templates defined in the .x file",
             default=False,
             )
+    show_geninfo = BoolProperty(
+            name="Show processing",
+            description="display details for each imported thing",
+            default=False,
+            )
+    
     quickmode = BoolProperty(
             name="Quick mode",
             description="only retrieve mesh basics",
@@ -135,24 +141,24 @@ class ImportX(bpy.types.Operator, ImportHelper):
 
     axis_forward = EnumProperty(
             name="Forward",
-            items=(('X', "X Forward", ""),
-                   ('Y', "Y Forward", ""),
-                   ('Z', "Z Forward", ""),
-                   ('-X', "-X Forward", ""),
-                   ('-Y', "-Y Forward", ""),
-                   ('-Z', "-Z Forward", ""),
+            items=(('X', "Left (x)", ""),
+                   ('Y', "Same (y)", ""),
+                   ('Z', "Bottom (z)", ""),
+                   ('-X', "Right (-x)", ""),
+                   ('-Y', "Back (-y)", ""),
+                   ('-Z', "Up (-z)", ""),
                    ),
             default='-Z',
             )
 
     axis_up = EnumProperty(
             name="Up",
-            items=(('X', "X Up", ""),
-                   ('Y', "Y Up", ""),
-                   ('Z', "Z Up", ""),
-                   ('-X', "-X Up", ""),
-                   ('-Y', "-Y Up", ""),
-                   ('-Z', "-Z Up", ""),
+            items=(('X', "Right (x)", ""),
+                   ('Y', "Front (y)", ""),
+                   ('Z', "Same (z)", ""),
+                   ('-X', "Left (-x)", ""),
+                   ('-Y', "Back (-y)", ""),
+                   ('-Z', "Bottom (-z)", ""),
                    ),
             default='Y',
             )
@@ -185,14 +191,24 @@ class ImportX(bpy.types.Operator, ImportHelper):
         col = layout.column(align=True)
         col.prop(self, "show_tree")
         col.prop(self, "show_templates")
+        col.prop(self, "show_geninfo")
         col.prop(self, "quickmode")
         col.prop(self, "chunksize")
         col.prop(self, "use_smooth_groups")
+        
+        
+        box = layout.box()
+        col = box.column(align=True)
+        col.label('Source Orientation :')      
+        col.prop(self, "axis_forward")
+        col.prop(self, "axis_up")
+        
+        
+
         #row = layout.row(align=True)
         #row.prop(self, "use_ngons")
         #row.prop(self, "use_edges")
-        box = layout.box()
-        col = box.column()
+
         
         '''
 

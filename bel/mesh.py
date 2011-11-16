@@ -6,9 +6,15 @@ from mathutils import *
 
 import bel.uv
 
+debuglevel = 0
+
 ## material MUST exist before creation of material slots
 ## map only uvmap 0 to its image defined in mat  for now (multitex view)
-def write(name, replace=False, verts=[], edges=[], faces=[], matslots=[], mats=[], uvs=[], smooth=False) :
+def write(name, replace=False, 
+          verts=[], edges=[], faces=[], 
+          matslots=[], mats=[], uvs=[], 
+          groupnames=[], vindices=[], vweights=[],
+          smooth=False) :
 
     if replace :
         # naming consistency for mesh w/ one user
@@ -75,6 +81,12 @@ def write(name, replace=False, verts=[], edges=[], faces=[], matslots=[], mats=[
         ob.parent = None
         ob.matrix_local = Matrix()
         dprint('  reuse object %s'%ob.name,2)
+    
+    # vertexgroups
+    if len(groupnames) > 0 :
+        for gpi, groupname in enumerate(groupnames) :
+            weightsadd(ob, groupname, vindices[gpi], vweights[gpi])
+    
     if  ob.name not in bpy.context.scene.objects.keys() :
         bpy.context.scene.objects.link(ob)
     return ob
@@ -94,7 +106,14 @@ def shadeflat(me,lst=True) :
     else :
         for fi,face in enumerate(me.faces) :
             face.use_smooth = False
-           
+
+def weightsadd(ob, groupname, vindices, vweights=False) :
+    if vweights == False : vweights = [1.0 for i in range(len(vindices))]
+    elif type(vweights) == float : vweights = [vweights for i in range(len(vindices))]
+    group = ob.vertex_groups.new(groupname)
+    for vi,v in enumerate(vindices) :
+        group.add([v], vweights[vi], 'REPLACE')
+
 def matToString(mat) :
     #print('*** %s %s'%(mat,type(mat)))
     return str(mat).replace('\n       ','')[6:]
@@ -131,8 +150,9 @@ def objectBuild(elm, verts, edges=[], faces=[], matslots=[], mats=[], uvs=[] ) :
         #ob.matrix_world = Matrix() # world
     return obnew
 
-def dprint(str,l=0) :
-    print(str)
+def dprint(str,l=2) :
+    if l <= debuglevel :
+        print(str)
 
 
 def materialsCheck(bld) :

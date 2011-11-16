@@ -7,7 +7,7 @@ first goals :
 . import .x in binary format too
 
 horizon :
-. export to .x
+. export to .x or mod/co-maintain the existing x exporter.
 . this project is also a prototype for a 'Blender Exchange Layer' project.
   BEL would be a common layer logically located between an importer/exporter
   addon and the blender data format, that would allow :
@@ -17,9 +17,7 @@ horizon :
     . to provide a common set of parsing helpers for new io addons
 
 PLY won't be used unfortunately (it's way too slow as far as I tested)
-but directly the re module and certainly minidom for recent file format
 
-actually it's not an addon yet.
 
 TO TEST THE SCRIPT :
   . copy the 'bel' folder in /scripts/modules
@@ -27,6 +25,15 @@ TO TEST THE SCRIPT :
   . start blender
   . enable then addon in  user prefs > addons
   . run the script with file > import > directX
+
+16/11/11
+. weight group import
+. improved ui a bit and console logs
+. x matrices to blender ones conversion
+
+14/11/11
+. global matrix options
+. added messy code about binary (not working)
 
 11/11/11
 . import materials and textures (basics) : uv and image mapped (multitex mode)
