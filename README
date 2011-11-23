@@ -1,4 +1,4 @@
-DirectX import-Export addon for Blender 2.6
+a DirectX importer addon for Blender 2.6
 
 first goals :
 
@@ -26,6 +26,31 @@ TO TEST THE SCRIPT :
   . enable then addon in  user prefs > addons
   . run the script with file > import > directX
 
+23/11/11
+. contrib candidate :)
+. solved some naming cases, added bel methods.
+. added experimental option about parenting (no armature yet just empties, when needed)
+. a bit faster
+. added some test files (empty parenting, armature etc)
+
+22/11/11
+campbell feedback (cont):
+. added naming methods as options (default is blender name inc. if name exists)
+  me and ob remove() should be ok with special cases (empties, mesh with multi-users)
+. improved ui
+
+
+21/11/11
+campbell feedback :
+. converted immutables to tuples : templates_x.py and some other vars.
+  http://stackoverflow.com/questions/3340539/why-tuple-is-faster-than-list
+. dprint() (console debug) removed, replaced by a inloop tests (a bit faster)
+  I'd like to keep it for now for easier debug (eg user feedbacks with 'processing' option)
+  
+19/11/11
+. object parenting support. parsing the x tree from roots using import_dxtree()
+  actually faster than before
+  
 16/11/11
 . weight group import
 . improved ui a bit and console logs

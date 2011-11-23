@@ -5,33 +5,55 @@ import mathutils
 from mathutils import *
 
 import bel.uv
+import bel.ob
 
 debuglevel = 0
+'''
+wip.. naming behaviour previous to any data
+name exist ?
+no : create
+yes :
+    naming_method = 0   blender default (increment name)
+    naming_method = 1   do nothing, abort creation and use existing
+    naming_method = 2   create new, rename existing, 
+    naming_method = 3   create new, remove existing
+    
+for now, and mesh data, 0 2 or 3
+'''
 
 ## material MUST exist before creation of material slots
 ## map only uvmap 0 to its image defined in mat  for now (multitex view)
-def write(name, replace=False, 
+def write(obname,name, 
           verts=[], edges=[], faces=[], 
           matslots=[], mats=[], uvs=[], 
           groupnames=[], vindices=[], vweights=[],
-          smooth=False) :
+          smooth=False,
+          naming_method = 0,
+          ) :
 
-    if replace :
-        # naming consistency for mesh w/ one user
-        if name in bpy.data.objects :
-            me = bpy.data.objects[name].data
-            if me :
-                if me.users == 1 : me.name = name
-            else : 
-                dprint('createMeshObject : object %s found with no mesh (%s) '%(name,type(me)),2)
-                wipeOutObject(bpy.data.objects[name])
-        # update mesh/object
-        if name in bpy.data.meshes :
-            me = bpy.data.meshes[name]
-            me.user_clear()
-            wipeOutData(me)
+    
+    obj = bpy.data.objects[obname] if obname in bpy.data.objects else False
+    me = bpy.data.meshes[name] if name in bpy.data.meshes else False
+
+    #print(naming_method,type(obj),type(me))
+    #print(obj,me)
+    #print()
+    if naming_method == 1 and me and obj and obj.data == me :
+        #print('%s and %s exist, reuse'%(obj.name,me.name))
+        return obj
+       
+    if naming_method == 3 :
+        if obj : 
+            #print('remove ob %s'%obj.name)
+            bel.ob.remove(obj,False)
+        if me :
+            #print('remove me %s'%me.name)
+            bel.ob.removeData(me)
+    
 
     me = bpy.data.meshes.new(name)
+    if naming_method == 2 : me.name = name
+    
     me.from_pydata(verts, edges, faces)
     me.update()
 
@@ -72,24 +94,31 @@ def write(name, replace=False,
     if len(uvs) > 0 :
         bel.uv.write(me, uvs, matimage)
 
-    if name not in bpy.data.objects or replace == False :
-        ob = bpy.data.objects.new(name=name, object_data=me)
-        dprint('  create object %s'%ob.name,2)
+
+    obj = bpy.data.objects.new(name=obname, object_data=me)
+    if naming_method != 0 :
+        obj.name = obname
+            
+    '''
     else :
         ob = bpy.data.objects[name]
         ob.data = me
+        if naming_method == 2 : ob.name = 
         ob.parent = None
         ob.matrix_local = Matrix()
-        dprint('  reuse object %s'%ob.name,2)
-    
+        print('  reuse object %s'%ob.name)
+    '''
+            
     # vertexgroups
     if len(groupnames) > 0 :
         for gpi, groupname in enumerate(groupnames) :
-            weightsadd(ob, groupname, vindices[gpi], vweights[gpi])
+            weightsadd(obj, groupname, vindices[gpi], vweights[gpi])
     
-    if  ob.name not in bpy.context.scene.objects.keys() :
-        bpy.context.scene.objects.link(ob)
-    return ob
+    # scene link check
+    if obj.name not in bpy.context.scene.objects.keys() :
+        bpy.context.scene.objects.link(obj)
+        
+    return obj
 
 def shadesmooth(me,lst=True) :
     if type(lst) == list :

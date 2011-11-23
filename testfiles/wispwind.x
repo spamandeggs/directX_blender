@@ -62,7 +62,7 @@ Material Material__23_01_-_DefaultSub0 {
  0.000000;0.000000;0.000000;;
 
  TextureFilename {
-  "body.png";
+  "body.bmp";
  }
 }
 
@@ -73,7 +73,7 @@ Material Material__23_02_-_DefaultSub1 {
  0.000000;0.000000;0.000000;;
 
  TextureFilename {
-  "face.png";
+  "face.bmp";
  }
 }
 

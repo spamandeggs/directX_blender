@@ -3,7 +3,7 @@ bl_info = {
     "name": "DirectX Importer",
     "description": "beta release, thanks to report errors",
     "author": "Littleneo / Jerome Mahieux",
-    "version": (0, 7),
+    "version": (0, 10),
     "blender": (2, 6, 0),
     "api": 41098,
     "location": "",
@@ -74,6 +74,12 @@ class ImportX(bpy.types.Operator, ImportHelper):
             description="only retrieve mesh basics",
             default=False,
             )
+    parented = BoolProperty(
+            name="Object Relationships (experimental)",
+            description="also import empties and rebuild parent-childs relations",
+            default=False,
+            )
+    
     chunksize = EnumProperty(
             name="Chunksize",
             items=(('0', "all", ""),
@@ -83,6 +89,16 @@ class ImportX(bpy.types.Operator, ImportHelper):
                    ),
             default='2048',
             description="number of bytes red in a row",
+            )
+    naming_method = EnumProperty(
+            name="Naming method",
+            items=(('0', "increment name if exists", "blender default"),
+                   ('1', "use existing", "this only append new elements"),
+                   ('2', "rename existing", "names are forced"),
+                   ('3', "replace existing", ""),
+                   ),
+            default='0',
+            description="behaviour when a name already exists in Blender Data",
             )
     use_ngons = BoolProperty(
             name="NGons",
@@ -172,13 +188,15 @@ class ImportX(bpy.types.Operator, ImportHelper):
             self.use_split_groups = False
         else:
             self.use_groups_as_vgroups = False
-
+            
         keywords = self.as_keywords(ignore=("axis_forward",
                                             "axis_up",
                                             "filter_glob",
                                             "split_mode",
                                             ))
 
+        keywords["naming_method"] = int(self.naming_method)
+        
         global_matrix = axis_conversion(from_forward=self.axis_forward,
                                         from_up=self.axis_up,
                                         ).to_4x4()
@@ -188,13 +206,17 @@ class ImportX(bpy.types.Operator, ImportHelper):
 
     def draw(self, context):
         layout = self.layout
-        col = layout.column(align=True)
-        col.prop(self, "show_tree")
-        col.prop(self, "show_templates")
-        col.prop(self, "show_geninfo")
-        col.prop(self, "quickmode")
+        
+        box = layout.box()
+        col = box.column(align=True)
+        col.label('Import Options :')  
         col.prop(self, "chunksize")
         col.prop(self, "use_smooth_groups")
+        col.prop(self, "quickmode")
+        actif = not(self.quickmode)
+        row = col.row()
+        row.enabled = actif
+        row.prop(self, "parented")
         
         
         box = layout.box()
@@ -202,16 +224,24 @@ class ImportX(bpy.types.Operator, ImportHelper):
         col.label('Source Orientation :')      
         col.prop(self, "axis_forward")
         col.prop(self, "axis_up")
-        
-        
 
+        box = layout.box()
+        col = box.column(align=True)
+        col.label('Naming Method :')
+        col.props_enum(self,"naming_method")
+
+        box = layout.box()
+        col = box.column(align=True)
+        col.label('Info / Debug :')
+        col.prop(self, "show_tree")
+        col.prop(self, "show_templates")
+        col.prop(self, "show_geninfo")
+        
         #row = layout.row(align=True)
         #row.prop(self, "use_ngons")
         #row.prop(self, "use_edges")
-
         
         '''
-
         box = layout.box()
         row = box.row()
         row.prop(self, "split_mode", expand=True)
@@ -226,8 +256,6 @@ class ImportX(bpy.types.Operator, ImportHelper):
 
         row = layout.split(percentage=0.67)
         row.prop(self, "global_clamp_size")
-        layout.prop(self, "axis_forward")
-        layout.prop(self, "axis_up")
 
         layout.prop(self, "use_image_search")
         '''

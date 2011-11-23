@@ -25,19 +25,21 @@ import os
 import re
 import struct, binascii
 import time
+
 import bpy
 import mathutils as bmat
 from mathutils import Vector, Matrix
+
 import bel.mesh
 import bel.image
 import bel.uv
-
-# just a temp hack tp reload bel everytime
-import imp
-
+import bel.material
+import bel.ob
 
 from .templates_x import *
 
+# just a temp hack to reload bel everytime
+import imp
 
 ###################################################
 
@@ -47,7 +49,9 @@ def load(operator, context, filepath,
          show_templates=False,
          show_geninfo=False,
          quickmode=False,
+         parented=False,
          chunksize=False,
+         naming_method=0,
          use_ngons=True,
          use_smooth_groups=True,
          use_edges=True,
@@ -57,10 +61,13 @@ def load(operator, context, filepath,
          use_groups_as_vgroups=False,
          global_matrix=None,
          ):
-
-    #global templates, tokens
     
-    longnamelookup = {}
+    if quickmode :
+        parented = False
+        
+    #global templates, tokens
+    rootTokens = []
+    namelookup = {}
     
     chunksize = int(chunksize)
 
@@ -68,26 +75,15 @@ def load(operator, context, filepath,
     imp.reload(bel.mesh)
     imp.reload(bel.image)
     imp.reload(bel.uv)
-
-
-    reserved_type = [
+    imp.reload(bel.ob)
+    imp.reload(bel.material)
+    
+    reserved_type = (
         'dword',
         'float',
         'string'
-    ]
-    # not recognized yet
-    tpl_reserved_type = [
-        'WORD',
-        'DWORD',
-        'FLOAT',
-        'DOUBLE',
-        'CHAR',
-        'UCHAR',
-        'BYTE',
-        'STRING',
-        'CSTRING', 
-        'UNICODE'
-    ]
+    )
+
     '''
         'array',
         'Matrix4x4',
@@ -194,7 +190,7 @@ BINARY FORMAT
         format = data.read(4).decode().strip()
         accuracy = int(data.read(4).decode())
         data.seek(0)
-        return [minor, major, format, accuracy]
+        return ( minor, major, format, accuracy )
         
     
     ##
@@ -231,15 +227,15 @@ BINARY FORMAT
                 #print(c,lvl,tree)
                 
                 if quickmode == False :
-                    ## check for templates
+                    ## look for templates
                     if re.match(r_template,l) :
                         tname = l.split(' ')[1]
                         templates[tname] = {'pointer' : ptr, 'line' : c}
                         continue
     
-                    ## check for {references}
+                    ## look for {references}
                     if re.match(r_refsectionname,l) :
-                        refname = longnamelookup[ l[1:-1].strip() ]
+                        refname = namelookup[ l[1:-1].strip() ]
                         #print('FOUND reference to %s in %s at line %s'%(refname,tree[lvl],c))
                         #tree = tree[0:lvl]
                         parent = tree[lvl]
@@ -253,27 +249,28 @@ BINARY FORMAT
                         else : tokens[refname]['users'].append(parent)
                         continue
     
-                ## check for anything { or Mesh in quickmode
+                ## look for any token { or only Mesh in quickmode
                 if re.match(r_sectionname,l) :
-                    mesh = getFramename(l,tokens)
-                    #print('FOUND %s %s %s %s'%(mesh,c,lvl,tree))
+                    tokenname = getName(l,tokens)
+                    #print('FOUND %s %s %s %s'%(tokenname,c,lvl,tree))
                     #print('pointer %s %s'%(data.tell(),ptr))
+                    if lvl == 1 : rootTokens.append(tokenname)
                     typ = l.split(' ')[0].strip().lower()
                     tree = tree[0:lvl]
-                    if typ not in tokentypes : tokentypes[typ] = [mesh]
-                    else : tokentypes[typ].append(mesh)
+                    if typ not in tokentypes : tokentypes[typ] = [tokenname]
+                    else : tokentypes[typ].append(tokenname)
                     parent = tree[-1]
-                    if mesh in tokens :
+                    if tokenname in tokens :
                         tokens[mesh]['pointer'] = ptr
                         tokens[mesh]['line'] = c
                         tokens[mesh]['parent'] = parent
                         tokens[mesh]['childs'] = []
                         tokens[mesh]['type'] = typ
                         
-                    else : tokens[mesh] = {'pointer': ptr, 'line' : c, 'parent':parent, 'childs':[], 'users':[], 'type':typ}
-                    tree.append(mesh)
+                    else : tokens[tokenname] = {'pointer': ptr, 'line' : c, 'parent':parent, 'childs':[], 'users':[], 'type':typ}
+                    tree.append(tokenname)
                     if lvl > 1 and quickmode == False :
-                        tokens[parent]['childs'].append(mesh)
+                        tokens[parent]['childs'].append(tokenname)
     
         return tokens, templates, tokentypes
                     
@@ -298,22 +295,21 @@ BINARY FORMAT
 
     
     # name unnamed tokens, watchout for x duplicate
-    # for blender
-    # referenced token in x should be named and unique..
-    def getFramename(l,tokens) :
+    # for blender, referenced token in x should be named and unique..
+    def getName(l,tokens) :
         xnam = l.split(' ')[1].strip()
         if xnam and xnam[-1] == '{' : xnam = xnam[:-1]
         nam = xnam
         if len(nam) == 0 : nam = l.split(' ')[0].strip()
         nam = nam[:15]
         id = 0
-        name = nam #'%s%.5d'%(nam,id)
-        while name in tokens :
+        bnam = nam #'%s%.5d'%(nam,id)
+        while bnam in tokens :
             id += 1
-            name = '%s%.5d'%(nam,id)
+            bnam = '%s%.5d'%(nam,id)
         #print('renamed %s > %s'%(l,name))
-        longnamelookup[xnam] = name
-        return name
+        namelookup[xnam] = bnam
+        return bnam
     
     
     ###################
@@ -327,29 +323,30 @@ BINARY FORMAT
       walk_dxtree(tokens.keys()) for the whole tree
     '''
     def walk_dXtree(field,lvl=0,tab='') :
-        for fi, framename in enumerate(field) :
-            if lvl > 0 or tokens[framename]['parent'] == '' :
-                if framename not in tokens :
-                    framename = framename[1:]
+        for fi, tokenname in enumerate(field) :
+            if lvl > 0 or tokens[tokenname]['parent'] == '' :
+                if tokenname not in tokens :
+                    tokenname = tokenname[1:]
                     ref = 'ref: '
                 else : ref = False
                 
-                frame_type = tokens[framename]['type']
-                line = ('{:7}'.format(tokens[framename]['line']))
-                log = ' %s%s (%s)'%( ref if ref else '', framename, frame_type )
+                frame_type = tokens[tokenname]['type']
+                line = ('{:7}'.format(tokens[tokenname]['line']))
+                log = ' %s%s (%s)'%( ref if ref else '', tokenname, frame_type )
                 print('%s.%s%s'%(line, tab, log))
                 if fi == len(field) - 1 : tab = tab[:-3] + '   '
     
                 if ref == False :
-                    for user in tokens[framename]['users'] :
+                    for user in tokens[tokenname]['users'] :
                          print('%s.%s |__ user: %s'%(line, tab.replace('_',' '), user))
-                    walk_dXtree(tokens[framename]['childs'],lvl+1,tab.replace('_',' ')+' |__')
+                    walk_dXtree(tokens[tokenname]['childs'],lvl+1,tab.replace('_',' ')+' |__')
                 
-                if fi == len(field) - 1 and len(tokens[framename]['childs']) == 0 :
+                if fi == len(field) - 1 and len(tokens[tokenname]['childs']) == 0 :
                     print('%s.%s'%(line,tab))
     
-        
-    ## converts directX 3dvectors to blender 3d vectors
+           
+                       
+    ## converts directX 3d vectors to blender 3d vectors
     def Vector3d(string) :
         co = string.split(';')
         return Vector((float(co[0]), float(co[1]), float(co[2])))
@@ -366,12 +363,10 @@ BINARY FORMAT
             block = block[0:s] + block[e:]
         block = block.replace('\n','').replace(' ','').replace('\t ','')
         return block
-    
-    
+        
     def readToken(tokenname) :
         token = tokens[tokenname]
         datatype = token['type'].lower()
-    
         if datatype in templates : tpl = templates[datatype]
         elif datatype in defaultTemplates : tpl = defaultTemplates[datatype]
         else :
@@ -557,13 +552,239 @@ BINARY FORMAT
         if clean : block = cleanBlock(block)
         return block
     
-    
-    # here we go
-    
-    def dprint(string):
-        if show_geninfo :   
-            print(string)
+    def getChilds(tokenname) :
+        childs = []
+        # '*' in childname means it's a reference. always performs this test
+        # to retrieve the token
+        for childname in tokens[tokenname]['childs'] :
+            if childname[0] == '*' : childname = childname[1:]
+            childs.append( childname )
+        return childs
+        
+    def import_dXtree(field,lvl=0) :
+        if field == [] : 
+            print('>> return False')
+            return False
+        ob = False
+        mat = False
+        
+        
+        #print('\n>>%s > %s :'%(parentname,field))
+        
+        for tokenname in field :
+
+            tokentype = tokens[tokenname]['type']
+            parentname = tokens[tokenname]['parent']
             
+            if tokentype  == 'mesh' :
+                # object and mesh naming :
+                # if parent frame has several meshes : obname = meshname = mesh token name,
+                # if parent frame has only one mesh  : obname = parent frame name, meshname =  mesh token name.
+                meshcount = 0
+                for child in getChilds(parentname) :
+                    if tokens[child]['type'] == 'mesh' : 
+                        meshcount += 1
+                        if meshcount == 2 :
+                            parentname = tokenname
+                            break
+                if parentname == '' : parentname = tokenname
+                ob = getMesh(parentname,tokenname)
+                
+            elif tokentype  == 'frametransformmatrix' :
+                [mat] = readToken(tokenname)
+                    
+        if ob :
+            try :
+                if parentname == '' : mat = mat * global_matrix
+                ob.matrix_world = mat
+            except :
+                # case when no frametransformmatrix token ?
+                ob.matrix_world = Matrix()
+                #print('mesh token without matrix, set it to default')
+                #print('please notice me in bug tracker if you read this !')
+        
+        # elif mat, either object parenting or armature.. or empty ?
+        elif mat :
+            ob = mat
+            '''
+            if lvl == 0 :
+                armdata = bpy.data.armatures.new(name=tokenname)
+                arm = bpy.data.objects.new(tokenname,armdata)
+                bpy.context.scene.objects.link(arm)
+                bpy.ops.object.mode_set(mode='EDIT')
+            bone0 = armdata.edit_bones.new(name=tokenname)
+            bone0.transform(mat , True, True)
+            '''
+        #print('  found %s'%ob)
+        matchilds = []
+        for tokenname in field :
+            if tokens[tokenname]['type']  == 'frame' :
+                # child is either False, an object, a matrix, or a list of matrices
+                child = import_dXtree(getChilds(tokenname),lvl+1)
+                #print('    %s child type: %s'%(tokenname,type(child)))
+                
+                if type(child) == list or type(child) == Matrix :
+                    matchilds.append(child)
+                    #print('    appended %s'%type(child))
+            
+                # child is an empty or a mesh, so current frame is an empty, not an armature
+                elif ob and ( type(child.data) == type(None) or type(child.data) == bpy.types.Mesh ) :
+                    #print('  child data type: %s'%type(child.data))
+                    
+                    if type(ob) == Matrix :
+                        ob = bel.ob.new(parentname, None, naming_method)
+                        ob.matrix_world = mat
+                        #print('converted %s to empty %s'%(parentname,ob.name))
+                        
+                    child.parent = ob
+                    #print('%s parented to %s'%(child.name,ob.name))
+                    
+                #else :
+                #    print('does nothing')
+
+                    
+        #print('  childs %s'%matchilds)            
+        if len(matchilds) :
+            ob = [ ob, matchilds ]
+
+        #print('>> %s return %s'%(field,ob))
+        return ob if ob else False
+
+    # token type = mesh
+    def getMesh(obname,tokenname):
+    
+        if show_geninfo : print('\nmesh name : %s'%tokenname)
+        
+        verts = []
+        edges = []
+        faces = []
+        matslots = []
+        facemats = []
+        uvs = []
+        groupnames = []
+        groupindices = []
+        groupweights = []
+
+        nVerts, verts, nFaces, faces = readToken(tokenname) 
+
+        if show_geninfo :
+            print('verts    : %s %s\nfaces    : %s %s'%(nVerts, len(verts),nFaces, len(faces)))
+        
+        #for childname in token['childs'] :
+        for childname in getChilds(tokenname) :
+            
+            tokentype = tokens[childname]['type']
+            
+            # UV
+            if tokentype == 'meshtexturecoords' :
+                uv = readToken(childname)
+                uv = bel.uv.asVertsLocation(uv, faces)
+                uvs.append(uv)
+                
+                if show_geninfo : print('uv       : %s'%(len(uv)))
+            
+            # MATERIALS
+            elif tokentype == 'meshmateriallist' :
+                nbslots, facemats = readToken(childname)
+                
+                if show_geninfo : print('facemats : %s'%(len(facemats)))
+                
+                # mat can exist but with no datas so we prepare the mat slot
+                # with dummy ones
+                for slot in range(nbslots) :
+                    matslots.append('noname%s'%slot )
+        
+                # length does not match (could be tuned more, need more cases)
+                if len(facemats) != len(faces) :
+                    facemats = [ facemats[0] for i in faces ]
+
+                # seek for materials then textures if any mapped
+                # in this mesh.
+                # no type test, only one option type : 'Material'
+                for slotid, matname in enumerate(getChilds(childname)) :
+                    
+                    # rename the dummy with theright name
+                    matslots[slotid] = matname
+
+                    #if show_geninfo : print(matslots)
+                    # blender material creation (need tuning)
+                    mat = bel.material.new(matname,naming_method)
+                    if naming_method != 1 :
+                    #if matname not in bpy.data.materials :
+                        #mat = bpy.data.materials.new(name=matname)
+                        (diffuse_color,alpha), power, specCol, emitCol = readToken(matname)
+                        #if show_geninfo : print(diffuse_color,alpha, power, specCol, emitCol)
+                        mat.diffuse_color = diffuse_color
+                        mat.diffuse_intensity = power
+                        mat.specular_color = specCol
+                        mat.emit = (emitCol[0] + emitCol[1] + emitCol[2] ) / 3
+                        # or mat.emit ?
+                        
+                        if alpha != 1.0 :
+                            mat.use_transparency = True
+                            mat.transparency_method = 'Z_TRANSPARENCY'
+                            mat.alpha = alpha
+                            mat.specular_alpha = 0
+                            transp = True
+                        else : transp = False
+            
+                        # texture
+                        # only 'TextureFilename' can be here, no type test
+                        for texname in getChilds(matname) :
+                            [filename] = readToken(texname)
+                            #if show_geninfo : print(path+'/'+filename)
+                            if filename not in bpy.data.images :
+                                img = bel.image.new(path+'/'+filename)
+                            else : img = bpy.data.images[filename]
+                            if img :
+                                if filename not in bpy.data.textures :
+                                    img = bel.image.new(path+'/'+filename)
+                                    tex = bpy.data.textures.new(name=filename,type='IMAGE')
+                                    tex.image = img
+                                    tex.use_alpha = transp
+                                    tex.use_preview_alpha = transp
+                                else :
+                                    tex = bpy.data.textures[filename]
+                                    
+                                texslot = mat.texture_slots.create(index=0)
+                                texslot.texture = tex
+                                texslot.texture_coords = 'UV'
+                                texslot.uv_layer = 'UV0'
+                                texslot.use_map_alpha = transp
+                                texslot.alpha_factor = alpha
+                                
+                    else : mat = bpy.data.materials[matname]
+                    
+                for matname in matslots :
+                    if matname not in bpy.data.materials :
+                        mat = bpy.data.materials.new(name=matname)
+                        
+                if show_geninfo : print('matslots : %s'%matslots)
+                
+            # VERTICES GROUPS/WEIGHTS
+            elif tokentype == 'skinweights' :
+                groupname, nverts, vindices, vweights, mat = readToken(childname)
+                groupname = namelookup[groupname]
+                if show_geninfo : 
+                    print('vgroup    : %s (%s/%s verts) %s'%(groupname,len(vindices),len(vweights),'bone' if groupname in tokens else ''))
+
+                #if show_geninfo : print('matrix : %s\n%s'%(type(mat),mat))
+                
+                groupnames.append(groupname)
+                groupindices.append(vindices)
+                groupweights.append(vweights)
+                
+        ob = bel.mesh.write(obname,tokenname, 
+                            verts, edges, faces, 
+                            matslots, facemats, uvs, 
+                            groupnames, groupindices, groupweights,
+                            use_smooth_groups,
+                            naming_method)
+        
+        return ob
+                           
+    ## here we go
+     
     file = os.path.basename(filepath)
     
     print('\nimporting %s...'%file)
@@ -589,11 +810,11 @@ BINARY FORMAT
         if format in [ 'txt' ] : #, 'bin' ] :
 
             ## FILE READ : STEP 1 : STRUCTURE
-            dprint('\nBuilding internal .x tree')
+            if show_geninfo : print('\nBuilding internal .x tree')
             t = time.clock()
             tokens, templates, tokentypes = dXtree(data,quickmode)
             readstruct_time = time.clock()-t
-            dprint('builded tree in %.2f\''%(readstruct_time)) # ,end='\r')
+            if show_geninfo : print('builded tree in %.2f\''%(readstruct_time)) # ,end='\r')
 
             ## populate templates with datas
             for tplname in templates :
@@ -605,138 +826,25 @@ BINARY FORMAT
                 walk_dXtree(tokens.keys())
             
             ## DATA IMPORTATION
-
-            for tokenname,token in tokens.items() :
-                if token['type'] == 'mesh' :
-                    
-                    dprint('\nmesh name : %s'%tokenname)
-                    
-                    verts = []
-                    edges = []
-                    faces = []
-                    matslots = []
-                    facemats = []
-                    uvs = []
-                    groupnames = []
-                    groupindices = []
-                    groupweights = []
-
-                    nVerts, verts, nFaces, faces = readToken(tokenname) 
-
-                    dprint('verts    : %s %s'%(nVerts, len(verts)))
-                    dprint('faces    : %s %s'%(nFaces, len(faces)))
-                    
-                    for childname in token['childs'] :
-                        # '*' in childname means it's a reference. always performs this test
-                        # to retrieve the token
-                        if childname[0] == '*' : childname = childname[1:]
-                        
-                        # UV
-                        if tokens[childname]['type'] == 'meshtexturecoords' :
-                            uv = readToken(childname)
-                            uv = bel.uv.asVertsLocation(uv, faces)
-                            uvs.append(uv)
-                            
-                            dprint('uv       : %s'%(len(uv)))
-                        
-                        # MATERIALS
-                        elif tokens[childname]['type'] == 'meshmateriallist' :
-                            nbslots, facemats = readToken(childname)
-                            
-                            dprint('facemats : %s'%(len(facemats)))
-
-                            
-                            # mat can exist but with no datas so we prepare the mat slot
-                            # with dummy ones
-                            for slot in range(nbslots) :
-                                matslots.append('noname%s'%slot )
-                    
-                            # length does not match (could be tuned more, need more cases)
-                            if len(facemats) != len(faces) :
-                                facemats = [ facemats[0] for i in faces ]
-
-                            # seek for materials then textures if any mapped
-                            # in this mesh.
-                            # no type test, only one option type : 'Material'
-                            for slotid, matname in enumerate(tokens[childname]['childs']) :
-                                if matname[0] == '*' : matname = matname[1:]
-                                
-                                # rename the dummy with theright name
-                                matslots[slotid] = matname
-
-                                #dprint(matslots)
-                                # blender material creation (need tuning)
-                                if matname not in bpy.data.materials :
-                                    mat = bpy.data.materials.new(name=matname)
-                                    (diffuse_color,alpha), power, specCol, emitCol = readToken(matname)
-                                    #dprint(diffuse_color,alpha, power, specCol, emitCol)
-                                    mat.diffuse_color = diffuse_color
-                                    mat.diffuse_intensity = power
-                                    mat.specular_color = specCol
-                                    mat.emit = (emitCol[0] + emitCol[1] + emitCol[2] ) / 3
-                                    # or mat.emit ?
-                                    
-                                    if alpha != 1.0 :
-                                        mat.use_transparency = True
-                                        mat.transparency_method = 'Z_TRANSPARENCY'
-                                        mat.alpha = alpha
-                                        mat.specular_alpha = 0
-                                        transp = True
-                                    else : transp = False
-                        
-                                    # texture
-                                    # only 'TextureFilename' can be here, no type test
-                                    for texname in tokens[matname]['childs'] :
-                                        if texname[0] == '*' : texname = texname[1:]
-                                        [filename] = readToken(texname)
-                                        #dprint(path+'/'+filename)
-                                        if filename not in bpy.data.images :
-                                            img = bel.image.new(path+'/'+filename)
-                                        else : img = bpy.data.images[filename]
-                                        if img :
-                                            if filename not in bpy.data.textures :
-                                                img = bel.image.new(path+'/'+filename)
-                                                tex = bpy.data.textures.new(name=filename,type='IMAGE')
-                                                tex.image = img
-                                                tex.use_alpha = transp
-                                                tex.use_preview_alpha = transp
-                                            else :
-                                                tex = bpy.data.textures[filename]
-                                                
-                                            texslot = mat.texture_slots.create(index=0)
-                                            texslot.texture = tex
-                                            texslot.texture_coords = 'UV'
-                                            texslot.uv_layer = 'UV0'
-                                            texslot.use_map_alpha = transp
-                                            texslot.alpha_factor = alpha
-                                            
-                                else : mat = bpy.data.materials[matname]
-                                
-                            for matname in matslots :
-                                if matname not in bpy.data.materials :
-                                    mat = bpy.data.materials.new(name=matname)
-                                    
-                            dprint('matslots : %s'%matslots)
-                            
-                        # VERTICES GROUPS/WEIGHTS
-                        elif tokens[childname]['type'] == 'skinweights' :
-                            groupname, nverts, vindices, vweights, mat = readToken(childname)
-
-                            dprint('vgroup : %s (%s/%s verts)'%(groupname,len(vindices),len(vweights)))
-                            #dprint('matrix : %s\n%s'%(type(mat),mat))
-                            
-                            groupnames.append(groupname)
-                            groupindices.append(vindices)
-                            groupweights.append(vweights)
-                            
-                    ob = bel.mesh.write(tokenname, False, 
-                                        verts, edges, faces, 
-                                        matslots, facemats, uvs, 
-                                        groupnames, groupindices, groupweights,
-                                        smooth=use_smooth_groups)
-                    
+            #if show_geninfo : print('Root : %s'%rootTokens)
+            if parented :
+                import_dXtree(rootTokens)
+            else :
+                for tokenname in tokentypes['mesh'] :
+                    obname = tokens[tokenname]['parent']
+                    # object and mesh naming :
+                    # if parent frame has several meshes : obname = meshname = mesh token name,
+                    # if parent frame has only one mesh  : obname = parent frame name, meshname =  mesh token name.
+                    meshcount = 0
+                    for child in getChilds(obname) :
+                        if tokens[child]['type'] == 'mesh' : 
+                            meshcount += 1
+                            if meshcount == 2 :
+                                obname = tokenname
+                                break
+                    if obname == '' : obname = tokenname
+                    ob = getMesh(obname,tokenname)
                     ob.matrix_world = global_matrix
-                    dprint('done')
                     
             print('done in %.2f\''%(time.clock()-start)) # ,end='\r')
             
