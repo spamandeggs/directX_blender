@@ -3,7 +3,7 @@ bl_info = {
     "name": "DirectX Importer",
     "description": "beta release, thanks to report errors",
     "author": "Littleneo / Jerome Mahieux",
-    "version": (0, 10),
+    "version": (0, 11),
     "blender": (2, 6, 0),
     "api": 41098,
     "location": "",
@@ -74,10 +74,19 @@ class ImportX(bpy.types.Operator, ImportHelper):
             description="only retrieve mesh basics",
             default=False,
             )
+    
     parented = BoolProperty(
             name="Object Relationships (experimental)",
             description="also import empties and rebuild parent-childs relations",
             default=False,
+            )
+    
+    bone_maxlength = FloatProperty(
+            name="Bone length",
+            description="Bones max length",
+            min=0.1, max=10.0,
+            soft_min=0.1, soft_max=10.0,
+            default=1.0,
             )
     
     chunksize = EnumProperty(
@@ -154,7 +163,7 @@ class ImportX(bpy.types.Operator, ImportHelper):
             soft_min=0.0, soft_max=1000.0,
             default=0.0,
             )
-
+    
     axis_forward = EnumProperty(
             name="Forward",
             items=(('X', "Left (x)", ""),
@@ -170,10 +179,10 @@ class ImportX(bpy.types.Operator, ImportHelper):
     axis_up = EnumProperty(
             name="Up",
             items=(('X', "Right (x)", ""),
-                   ('Y', "Front (y)", ""),
+                   ('Y', "Back (y)", ""),
                    ('Z', "Same (z)", ""),
                    ('-X', "Left (-x)", ""),
-                   ('-Y', "Back (-y)", ""),
+                   ('-Y', "Front (-y)", ""),
                    ('-Z', "Bottom (-z)", ""),
                    ),
             default='Y',
@@ -217,7 +226,10 @@ class ImportX(bpy.types.Operator, ImportHelper):
         row = col.row()
         row.enabled = actif
         row.prop(self, "parented")
-        
+        if self.parented :
+            row = col.row()
+            row.enabled = actif
+            row.prop(self, "bone_maxlength")      
         
         box = layout.box()
         col = box.column(align=True)

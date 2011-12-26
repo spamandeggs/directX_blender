@@ -50,21 +50,25 @@ def load(operator, context, filepath,
          show_geninfo=False,
          quickmode=False,
          parented=False,
+         bone_maxlength=1.0,
          chunksize=False,
          naming_method=0,
          use_ngons=True,
-         use_smooth_groups=True,
          use_edges=True,
+         use_smooth_groups=True,
          use_split_objects=True,
          use_split_groups=True,
-         use_image_search=True,
          use_groups_as_vgroups=False,
+         use_image_search=True,
          global_matrix=None,
          ):
     
+    
     if quickmode :
         parented = False
-        
+    
+    bone_minlength = bone_maxlength / 100.0
+    
     #global templates, tokens
     rootTokens = []
     namelookup = {}
@@ -560,22 +564,60 @@ BINARY FORMAT
             if childname[0] == '*' : childname = childname[1:]
             childs.append( childname )
         return childs
+    
+    def buildArm(armname, child,lvl=0,parent_matrix=False) :
         
+        bonename, bonemat, bonechilds = child
+        #bonemat[3] = Vector((bonemat[0],bonemat[2],bonemat[1]))
+        if lvl == 0 :
+            #print(child)
+            armdata = bpy.data.armatures.new(name=armname)
+            arm = bpy.data.objects.new(armname,armdata)
+            bpy.context.scene.objects.link(arm)
+            bpy.ops.object.select_name(name=arm.name)
+            bpy.ops.object.mode_set(mode='EDIT')
+            parent_matrix = Matrix()#global_matrix
+            
+        else : armdata = armname
+        
+        #bonemat = bonemat * parent_matrix
+        
+        bone = armdata.edit_bones.new(name=bonename)
+        bonematW = parent_matrix * bonemat
+        bone.head = bonematW.to_translation()
+        #bone.roll.. ?
+        bone_length = bone_maxlength
+        bone.tail = bonematW * Vector((0,bone_length,0))
+        for bonechild in bonechilds :
+            bonechild = buildArm(armdata,bonechild,lvl+1,bonematW)
+            bonechild.parent = bone
+            bone_length = min((bonechild.head - bone.head).length, bone_length)
+        bone.length = max(bone_minlength,bone_length)
+        if lvl == 0 :
+            bpy.ops.object.mode_set(mode='OBJECT')
+            #arm.matrix_world = global_matrix
+            return arm
+        return bone
+    
     def import_dXtree(field,lvl=0) :
+        tab = ' '*lvl*2
         if field == [] : 
-            print('>> return False')
+            if show_geninfo : print('%s>> no childs, return False'%(tab))
             return False
         ob = False
         mat = False
+        is_root = False
+        frames = []
+        obs = []
         
-        
-        #print('\n>>%s > %s :'%(parentname,field))
+        parentname = tokens[field[0]]['parent']
+        if show_geninfo : print('%s>>childs in frame %s :'%(tab,parentname))
         
         for tokenname in field :
 
             tokentype = tokens[tokenname]['type']
-            parentname = tokens[tokenname]['parent']
             
+            # frames can contain more than one mesh
             if tokentype  == 'mesh' :
                 # object and mesh naming :
                 # if parent frame has several meshes : obname = meshname = mesh token name,
@@ -589,71 +631,130 @@ BINARY FORMAT
                             break
                 if parentname == '' : parentname = tokenname
                 ob = getMesh(parentname,tokenname)
-                
+                obs.append(ob)
+
+                if show_geninfo : print('%smesh : %s'%(tab,tokenname))
+            
+            # frames contain one matrix (empty or bone)
             elif tokentype  == 'frametransformmatrix' :
                 [mat] = readToken(tokenname)
-                    
+                if show_geninfo : print('%smatrix : %s'%(tab,tokenname))
+            
+            # frames can contain 0 or more frames
+            elif tokentype  == 'frame' :
+                frames.append(tokenname)
+                if show_geninfo : print('%sframe : %s'%(tab,tokenname))
+        
+        # matrix is used for mesh transform if some mesh(es) exist(s)      
         if ob :
-            try :
-                if parentname == '' : mat = mat * global_matrix
+            is_root = True
+            if mat == False :
+                mat = Matrix()
+                if show_geninfo : print('%smesh token without matrix, set it to default\n%splease notice me in bug tracker if you read this !'%(tab,tab))
+            if parentname == '' : 
+                mat = mat * global_matrix
+            if len(obs) == 1 :
                 ob.matrix_world = mat
-            except :
+            else :
+                ob = bel.ob.new(parentname, None, naming_method)
+                ob.matrix_world = mat
+                for child in obs :
+                    child.parent = ob
+                #obs = [ob]
+            #try :
+            #    if parentname == '' : mat = mat * global_matrix
+            #    ob.matrix_world = mat
+            #except :
                 # case when no frametransformmatrix token ?
-                ob.matrix_world = Matrix()
+            #    ob.matrix_world = Matrix()
                 #print('mesh token without matrix, set it to default')
                 #print('please notice me in bug tracker if you read this !')
         
-        # elif mat, either object parenting or armature.. or empty ?
+        # matrix only, store it as a list as we don't know if
+        # it's a bone or an empty yet
         elif mat :
-            ob = mat
-            '''
-            if lvl == 0 :
-                armdata = bpy.data.armatures.new(name=tokenname)
-                arm = bpy.data.objects.new(tokenname,armdata)
-                bpy.context.scene.objects.link(arm)
-                bpy.ops.object.mode_set(mode='EDIT')
-            bone0 = armdata.edit_bones.new(name=tokenname)
-            bone0.transform(mat , True, True)
-            '''
+            ob = [parentname, mat,[]]
+            
+            #obs = []
+            #ob = mat
+
+            
+        # nothing case ?
+        else :
+            if show_geninfo : print('%snothing here'%(tab))
+            ob = [parentname, Matrix() * global_matrix,[]]
+            
         #print('  found %s'%ob)
-        matchilds = []
-        for tokenname in field :
-            if tokens[tokenname]['type']  == 'frame' :
-                # child is either False, an object, a matrix, or a list of matrices
-                child = import_dXtree(getChilds(tokenname),lvl+1)
-                #print('    %s child type: %s'%(tokenname,type(child)))
+        childs = []
+        
+        for tokenname in frames :
+            if show_geninfo : print('%s<Begin %s :'%(tab,tokenname))
                 
-                if type(child) == list or type(child) == Matrix :
-                    matchilds.append(child)
+            # child is either False, empty, object, or a list or undefined name matrices hierarchy
+            child = import_dXtree(getChilds(tokenname),lvl+1)
+            if child and type(child) != list :
+                is_root = True
+            #type(child.data) == type(None) or type(child.data) == bpy.types.Mesh : is_root = True
+            childs.append( [tokenname, child] )
+            #print('    %s child type: %s'%(tokenname,type(child)))
+            if show_geninfo : print('%sEnd %s>'%(tab,tokenname))
+        
+        if is_root and parentname != '' :
+            
+            if show_geninfo : print('%send of tree a this point'%(tab))
+            if type(ob) == list :
+                mat = ob[1]
+                ob = bel.ob.new(parentname, None, naming_method)
+            ob.matrix_world = mat
+            
+        for tokenname, child in childs :
+            if show_geninfo : print('%sbegin2 %s>'%(tab,tokenname))
+            # returned a list of object(s) or matrice(s)
+            if child :
+
+                # current frame is an object or an empty, we parent this frame to it
+                #if eot or (ob and ( type(ob.data) == type(None) or type(ob.data) == bpy.types.Mesh ) ) :
+                if is_root :
+                    # this branch is an armature, convert it
+                    if type(child) == list :
+                        if show_geninfo : print('%sconvert to armature %s'%(tab,tokenname))
+                        child = buildArm(tokenname, child)
+                        #ob.matrix_world = mat
+                        
+                    if parentname != '' :
+                        child.parent = ob
+                    else :
+                        child.matrix_world = global_matrix
+                        
+                # returned a list of parented matrix
+                elif type(child[0]) == str :
+                    # append it in childs list
+                    ob[2].append(child)
                     #print('    appended %s'%type(child))
             
                 # child is an empty or a mesh, so current frame is an empty, not an armature
                 elif ob and ( type(child.data) == type(None) or type(child.data) == bpy.types.Mesh ) :
                     #print('  child data type: %s'%type(child.data))
-                    
-                    if type(ob) == Matrix :
-                        ob = bel.ob.new(parentname, None, naming_method)
-                        ob.matrix_world = mat
-                        #print('converted %s to empty %s'%(parentname,ob.name))
                         
                     child.parent = ob
                     #print('%s parented to %s'%(child.name,ob.name))
-                    
-                #else :
-                #    print('does nothing')
+                
+            # returned False
+            else :
+                 if show_geninfo : print('%sreturned %s, nothing'%(tab,child))
 
                     
         #print('  childs %s'%matchilds)            
-        if len(matchilds) :
-            ob = [ ob, matchilds ]
+        #if len(matchilds) :
+        #    ob = [ ob, matchilds ]
 
         #print('>> %s return %s'%(field,ob))
         return ob if ob else False
 
     # token type = mesh
-    def getMesh(obname,tokenname):
+    def getMesh(obname,tokenname,debug = False):
     
-        if show_geninfo : print('\nmesh name : %s'%tokenname)
+        if debug : print('\nmesh name : %s'%tokenname)
         
         verts = []
         edges = []
@@ -667,7 +768,7 @@ BINARY FORMAT
 
         nVerts, verts, nFaces, faces = readToken(tokenname) 
 
-        if show_geninfo :
+        if debug :
             print('verts    : %s %s\nfaces    : %s %s'%(nVerts, len(verts),nFaces, len(faces)))
         
         #for childname in token['childs'] :
@@ -681,13 +782,13 @@ BINARY FORMAT
                 uv = bel.uv.asVertsLocation(uv, faces)
                 uvs.append(uv)
                 
-                if show_geninfo : print('uv       : %s'%(len(uv)))
+                if debug : print('uv       : %s'%(len(uv)))
             
             # MATERIALS
             elif tokentype == 'meshmateriallist' :
                 nbslots, facemats = readToken(childname)
                 
-                if show_geninfo : print('facemats : %s'%(len(facemats)))
+                if debug : print('facemats : %s'%(len(facemats)))
                 
                 # mat can exist but with no datas so we prepare the mat slot
                 # with dummy ones
@@ -706,14 +807,14 @@ BINARY FORMAT
                     # rename the dummy with theright name
                     matslots[slotid] = matname
 
-                    #if show_geninfo : print(matslots)
+                    #if debug : print(matslots)
                     # blender material creation (need tuning)
                     mat = bel.material.new(matname,naming_method)
                     if naming_method != 1 :
                     #if matname not in bpy.data.materials :
                         #mat = bpy.data.materials.new(name=matname)
                         (diffuse_color,alpha), power, specCol, emitCol = readToken(matname)
-                        #if show_geninfo : print(diffuse_color,alpha, power, specCol, emitCol)
+                        #if debug : print(diffuse_color,alpha, power, specCol, emitCol)
                         mat.diffuse_color = diffuse_color
                         mat.diffuse_intensity = power
                         mat.specular_color = specCol
@@ -732,7 +833,7 @@ BINARY FORMAT
                         # only 'TextureFilename' can be here, no type test
                         for texname in getChilds(matname) :
                             [filename] = readToken(texname)
-                            #if show_geninfo : print(path+'/'+filename)
+                            #if debug : print(path+'/'+filename)
                             if filename not in bpy.data.images :
                                 img = bel.image.new(path+'/'+filename)
                             else : img = bpy.data.images[filename]
@@ -759,16 +860,16 @@ BINARY FORMAT
                     if matname not in bpy.data.materials :
                         mat = bpy.data.materials.new(name=matname)
                         
-                if show_geninfo : print('matslots : %s'%matslots)
+                if debug : print('matslots : %s'%matslots)
                 
             # VERTICES GROUPS/WEIGHTS
             elif tokentype == 'skinweights' :
                 groupname, nverts, vindices, vweights, mat = readToken(childname)
                 groupname = namelookup[groupname]
-                if show_geninfo : 
+                if debug : 
                     print('vgroup    : %s (%s/%s verts) %s'%(groupname,len(vindices),len(vweights),'bone' if groupname in tokens else ''))
 
-                #if show_geninfo : print('matrix : %s\n%s'%(type(mat),mat))
+                #if debug : print('matrix : %s\n%s'%(type(mat),mat))
                 
                 groupnames.append(groupname)
                 groupindices.append(vindices)
@@ -826,7 +927,7 @@ BINARY FORMAT
                 walk_dXtree(tokens.keys())
             
             ## DATA IMPORTATION
-            #if show_geninfo : print('Root : %s'%rootTokens)
+            if show_geninfo : print('Root frames :\n %s'%rootTokens)
             if parented :
                 import_dXtree(rootTokens)
             else :
@@ -843,7 +944,7 @@ BINARY FORMAT
                                 obname = tokenname
                                 break
                     if obname == '' : obname = tokenname
-                    ob = getMesh(obname,tokenname)
+                    ob = getMesh(obname,tokenname,show_geninfo)
                     ob.matrix_world = global_matrix
                     
             print('done in %.2f\''%(time.clock()-start)) # ,end='\r')

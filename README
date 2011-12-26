@@ -25,6 +25,9 @@ TO TEST THE SCRIPT :
   . start blender
   . enable then addon in  user prefs > addons
   . run the script with file > import > directX
+  
+26/12/11
+. armature import and bone max. length option
 
 23/11/11
 . contrib candidate :)
