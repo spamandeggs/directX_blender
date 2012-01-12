@@ -1,4 +1,6 @@
 import bpy
+import bpy.path
+import bel
 import bel.fs
 
 debuglevel = 0
@@ -7,18 +9,40 @@ def dprint(str,l=2) :
     if l <= debuglevel :
         print(str)
 
-def new(path,name=False,premul = True) :
+# create or retrieve a bdata image
+# given its path 
+def new(path, name=False, relative = True, premul = True) :
     path = bel.fs.clean(path)
-    if name == False : name = path.split('/')[-1]
-    if name not in bpy.data.images :        
-        if bel.fs.isfile(path) == False :
-            dprint('Texture image not found')
-            return False
-        img = bpy.data.images.load(filepath=path)
-        img.name = name
-        img.use_premultiply = premul
-    else : img = bpy.data.images[name]
+    # check file
+    if bel.fs.isfile(path) == False :
+        dprint('Texture image not found')
+        return False
+
+    if relative :
+        try :
+            path = bpy.path.relpath(path)
+            path = bel.fs.clean(path)
+        except : 
+            print('cant turn path into relative one (.blend and img path drive letters ?) ')
+        
+    # retrieve paths to image file from existing image slot
+    # returns img if paths match
+    for img in bpy.data.images :
+        if img.filepath != '' :
+            if bpy.path.abspath(path) == bpy.path.abspath(bel.fs.clean(img.filepath)) :
+                return img
+
+    # create a unique name in image slot
+    if name == False : 
+        name = bpy.path.basename(path)
+    name = bel.bpyname(name,bpy.data.images.keys())
+
+    # finally :
+    img = bpy.data.images.load(filepath=path)
+    img.name = name
+    img.use_premultiply = premul
     return img
+
 
 def applyShader(mat,config) :
 

@@ -1,12 +1,12 @@
 # Blender directX importer
 bl_info = {
     "name": "DirectX Importer",
-    "description": "beta release, thanks to report errors",
-    "author": "Littleneo / Jerome Mahieux",
-    "version": (0, 11),
+    "description": "Import directX Model Format (.x)",
+    "author": "Littleneo (Jerome Mahieux)",
+    "version": (0, 15),
     "blender": (2, 6, 0),
     "api": 41098,
-    "location": "",
+    "location": "File > Import > DirectX (.x)",
     "warning": "",
     "wiki_url": "https://github.com/littleneo/directX_blender/wiki",
     "tracker_url": "https://github.com/littleneo/directX_blender/issues",

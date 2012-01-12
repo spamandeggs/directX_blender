@@ -25,7 +25,28 @@ TO TEST THE SCRIPT :
   . start blender
   . enable then addon in  user prefs > addons
   . run the script with file > import > directX
-  
+
+12/01/12 rc 0.15 :)
+. name conversion changed from 5 to 4 digits
+. matname, imagename and texturename fixes :
+. a path test is made at image import time with any existing data images, 
+  so a same file cant be loaded twice wathever the naming method, / or \, rel or abs etc 
+  (bel.material.new() and after line 835)
+. image and texture names should be ok now (tested with : incrediblylongname.x)
+. materials are replaced accordingly in existing objs when using the 'replace' naming method
+. fyi, the Dx exporter has the following inconveniences :
+    . split linked faces into individual faces
+    . inversed uvmapping (y axis) ?
+    -> see testfiles/blender_x_export/incrediblylongname.x
+   
+29 and 31/12/11
+. Cosmetics, code cleaning and optimizations
+. bpy.ops.object.select_name methods replaced with
+    ob.select = True
+    bpy.context.scene.objects.active = ob
+. corrected a big bug about tokens info appending in dXtree()
+. new bpyname() method in bel module. removed bel.common
+
 26/12/11
 . armature import and bone max. length option
 

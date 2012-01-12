@@ -1,8 +1,8 @@
 from mathutils import Vector
-from bel.common import nested
+import bel
 
 def write(me, uvs, matimage = False) :
-    uvs, nest = nested(uvs)
+    uvs, nest = bel.nested(uvs)
     newuvs = []
     for uvi, uvlist in enumerate(uvs) :
 

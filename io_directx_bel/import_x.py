@@ -30,6 +30,7 @@ import bpy
 import mathutils as bmat
 from mathutils import Vector, Matrix
 
+import bel
 import bel.mesh
 import bel.image
 import bel.uv
@@ -40,6 +41,13 @@ from .templates_x import *
 
 # just a temp hack to reload bel everytime
 import imp
+imp.reload(bel)
+imp.reload(bel.fs)
+imp.reload(bel.image)
+imp.reload(bel.material)
+imp.reload(bel.mesh)
+imp.reload(bel.ob)
+imp.reload(bel.uv)
 
 ###################################################
 
@@ -72,6 +80,7 @@ def load(operator, context, filepath,
     #global templates, tokens
     rootTokens = []
     namelookup = {}
+    imgnamelookup = {}
     
     chunksize = int(chunksize)
 
@@ -208,6 +217,7 @@ BINARY FORMAT
         ptr = 0
         eol = 0
         trunkated = False
+        previouslvl = False
         while True :
         #for l in data.readlines() :
             lines, trunkated = nextFileChunk(data,trunkated)
@@ -226,8 +236,11 @@ BINARY FORMAT
                     continue
                 #print('%s lines in %.2f\''%(c,time.clock()-t),end='\r')
                 #print(c,len(l)+1,ptr,data.tell())
-                if '{' in l : lvl += 1
-                if '}' in l : lvl -= 1
+                if '{' in l :
+                    lvl += 1
+                    if '}' in l : previouslvl = True #; print('got one line token : \n%s'%l)
+                elif '}' in l :
+                    lvl -= 1
                 #print(c,lvl,tree)
                 
                 if quickmode == False :
@@ -244,7 +257,7 @@ BINARY FORMAT
                         #tree = tree[0:lvl]
                         parent = tree[lvl]
                         # tag it as a reference, since it's not exactly a child.
-                        # put it in there since order can matter in sub tokens declaration
+                        # put it in childs since order can matter in sub tokens declaration
                         tokens[parent]['childs'].append('*'+refname) 
                         if refname not in tokens :
                             print('reference to %s done before its declaration (line %s)\ncreated dummy'%(refname,c))
@@ -265,17 +278,28 @@ BINARY FORMAT
                     else : tokentypes[typ].append(tokenname)
                     parent = tree[-1]
                     if tokenname in tokens :
-                        tokens[mesh]['pointer'] = ptr
-                        tokens[mesh]['line'] = c
-                        tokens[mesh]['parent'] = parent
-                        tokens[mesh]['childs'] = []
-                        tokens[mesh]['type'] = typ
+                        tokens[tokenname]['pointer'] = ptr
+                        tokens[tokenname]['line'] = c
+                        tokens[tokenname]['parent'] = parent
+                        tokens[tokenname]['childs'] = []
+                        tokens[tokenname]['type'] = typ
                         
-                    else : tokens[tokenname] = {'pointer': ptr, 'line' : c, 'parent':parent, 'childs':[], 'users':[], 'type':typ}
+                    else : tokens[tokenname] = {'pointer': ptr,
+                                                'line'   : c,
+                                                'parent' : parent,
+                                                'childs' : [],
+                                                'users'  : [],
+                                                'type'   : typ
+                                                }
                     tree.append(tokenname)
                     if lvl > 1 and quickmode == False :
                         tokens[parent]['childs'].append(tokenname)
-    
+                        
+                # one line token cases level switch
+                if previouslvl :
+                    lvl -= 1
+                    previouslvl = False
+
         return tokens, templates, tokentypes
                     
     ## returns file binary chunks
@@ -291,6 +315,7 @@ BINARY FORMAT
                 if lines[0] == '' : return None, None
                 return lines, False
             return lines, lines.pop()
+        # wip, todo for binaries
         else :
             print(chunk)
             for word in range(0,len(chunk)) :
@@ -302,18 +327,15 @@ BINARY FORMAT
     # for blender, referenced token in x should be named and unique..
     def getName(l,tokens) :
         xnam = l.split(' ')[1].strip()
+        if xnam[0] == '{' : xnam = ''
         if xnam and xnam[-1] == '{' : xnam = xnam[:-1]
-        nam = xnam
-        if len(nam) == 0 : nam = l.split(' ')[0].strip()
-        nam = nam[:15]
-        id = 0
-        bnam = nam #'%s%.5d'%(nam,id)
-        while bnam in tokens :
-            id += 1
-            bnam = '%s%.5d'%(nam,id)
-        #print('renamed %s > %s'%(l,name))
-        namelookup[xnam] = bnam
-        return bnam
+        
+        name = xnam
+        if len(name) == 0 : name = l.split(' ')[0].strip()
+        
+        namelookup[xnam] = bel.bpyname(name,tokens,4)
+
+        return namelookup[xnam]
     
     
     ###################
@@ -351,9 +373,9 @@ BINARY FORMAT
            
                        
     ## converts directX 3d vectors to blender 3d vectors
-    def Vector3d(string) :
-        co = string.split(';')
-        return Vector((float(co[0]), float(co[1]), float(co[2])))
+    #def Vector3d(string) :
+    #    co = string.split(';')
+    #    return Vector((float(co[0]), float(co[1]), float(co[2])))
     
     ## remove eol, comments, spaces from a raw block of datas
     def cleanBlock(block) :
@@ -467,7 +489,7 @@ BINARY FORMAT
     ###################################################
 
     ## populate a template with its datas
-    # this make them available in the internal dict. sould be use in step 2 for unknown data type at least
+    # this make them available in the internal dict. should be used in step 2 for unknown data type at least
     def readTemplate(data,tpl_name,display=False) :
         ptr = templates[tpl_name]['pointer']
         line = templates[tpl_name]['line']
@@ -478,7 +500,8 @@ BINARY FORMAT
         go = True
         while go :
             lines, trunkated = nextFileChunk(data,trunkated,chunksize) # stream ?
-            if lines == None : break
+            if lines == None : 
+                break
             for l in lines :
                 #l = data.readline().decode().strip()
                 block += l.strip()
@@ -529,7 +552,7 @@ BINARY FORMAT
             
     ##  read any kind of token data block
     # by default the block is cleaned from inline comment space etc to allow data parsing
-    # cleaned = False (retrieve all bytes) is used if one needs to compute a file byte pointer
+    # useclean = False (retrieve all bytes) if you need to compute a file byte pointer
     # to mimic the file.tell() function and use it with file.seek()
     def readBlock(data,token, clean=True) :
         ptr = token['pointer']
@@ -542,7 +565,6 @@ BINARY FORMAT
             lines, trunkated = nextFileChunk(data,trunkated,chunksize)
             if lines == None : break
             for l in lines :
-                #print(l)
                 #eol = len(l) + 1
                 l = l.strip()
                 #c += 1
@@ -558,44 +580,40 @@ BINARY FORMAT
     
     def getChilds(tokenname) :
         childs = []
-        # '*' in childname means it's a reference. always performs this test
-        # to retrieve the token
+        # '*' in childname means it's a reference. always perform this test
+        # when using the childs field
         for childname in tokens[tokenname]['childs'] :
             if childname[0] == '*' : childname = childname[1:]
             childs.append( childname )
         return childs
     
-    def buildArm(armname, child,lvl=0,parent_matrix=False) :
+	# the input nested list of [bonename, matrix, [child0,child1..]] is given by import_dXtree()
+    def buildArm(armdata, child,lvl=0,parent_matrix=False) :
         
         bonename, bonemat, bonechilds = child
-        #bonemat[3] = Vector((bonemat[0],bonemat[2],bonemat[1]))
+        
         if lvl == 0 :
-            #print(child)
+            armname = armdata
             armdata = bpy.data.armatures.new(name=armname)
             arm = bpy.data.objects.new(armname,armdata)
             bpy.context.scene.objects.link(arm)
-            bpy.ops.object.select_name(name=arm.name)
+            arm.select = True
+            bpy.context.scene.objects.active = arm
             bpy.ops.object.mode_set(mode='EDIT')
-            parent_matrix = Matrix()#global_matrix
-            
-        else : armdata = armname
-        
-        #bonemat = bonemat * parent_matrix
+            parent_matrix = Matrix()
         
         bone = armdata.edit_bones.new(name=bonename)
         bonematW = parent_matrix * bonemat
         bone.head = bonematW.to_translation()
         #bone.roll.. ?
         bone_length = bone_maxlength
-        bone.tail = bonematW * Vector((0,bone_length,0))
         for bonechild in bonechilds :
             bonechild = buildArm(armdata,bonechild,lvl+1,bonematW)
             bonechild.parent = bone
             bone_length = min((bonechild.head - bone.head).length, bone_length)
-        bone.length = max(bone_minlength,bone_length)
+        bone.tail = bonematW * Vector((0,bone_length,0))
         if lvl == 0 :
             bpy.ops.object.mode_set(mode='OBJECT')
-            #arm.matrix_world = global_matrix
             return arm
         return bone
     
@@ -650,7 +668,7 @@ BINARY FORMAT
             is_root = True
             if mat == False :
                 mat = Matrix()
-                if show_geninfo : print('%smesh token without matrix, set it to default\n%splease notice me in bug tracker if you read this !'%(tab,tab))
+                if show_geninfo : print('%smesh token without matrix, set it to default\n%splease report in bug tracker if you read this !'%(tab,tab))
             if parentname == '' : 
                 mat = mat * global_matrix
             if len(obs) == 1 :
@@ -660,43 +678,27 @@ BINARY FORMAT
                 ob.matrix_world = mat
                 for child in obs :
                     child.parent = ob
-                #obs = [ob]
-            #try :
-            #    if parentname == '' : mat = mat * global_matrix
-            #    ob.matrix_world = mat
-            #except :
-                # case when no frametransformmatrix token ?
-            #    ob.matrix_world = Matrix()
-                #print('mesh token without matrix, set it to default')
-                #print('please notice me in bug tracker if you read this !')
         
         # matrix only, store it as a list as we don't know if
         # it's a bone or an empty yet
         elif mat :
             ob = [parentname, mat,[]]
-            
-            #obs = []
-            #ob = mat
 
-            
         # nothing case ?
         else :
-            if show_geninfo : print('%snothing here'%(tab))
             ob = [parentname, Matrix() * global_matrix,[]]
-            
-        #print('  found %s'%ob)
+            if show_geninfo : print('%snothing here'%(tab))
+
         childs = []
         
         for tokenname in frames :
             if show_geninfo : print('%s<Begin %s :'%(tab,tokenname))
-                
+            
             # child is either False, empty, object, or a list or undefined name matrices hierarchy
             child = import_dXtree(getChilds(tokenname),lvl+1)
             if child and type(child) != list :
                 is_root = True
-            #type(child.data) == type(None) or type(child.data) == bpy.types.Mesh : is_root = True
             childs.append( [tokenname, child] )
-            #print('    %s child type: %s'%(tokenname,type(child)))
             if show_geninfo : print('%sEnd %s>'%(tab,tokenname))
         
         if is_root and parentname != '' :
@@ -719,23 +721,21 @@ BINARY FORMAT
                     if type(child) == list :
                         if show_geninfo : print('%sconvert to armature %s'%(tab,tokenname))
                         child = buildArm(tokenname, child)
-                        #ob.matrix_world = mat
                         
+                    # parent the obj/empty/arm to current
+                    # or apply the global user defined matrix to the object root
                     if parentname != '' :
                         child.parent = ob
                     else :
                         child.matrix_world = global_matrix
                         
-                # returned a list of parented matrix
+                # returned a list of parented matrices. append it in childs list
                 elif type(child[0]) == str :
-                    # append it in childs list
                     ob[2].append(child)
-                    #print('    appended %s'%type(child))
-            
+
                 # child is an empty or a mesh, so current frame is an empty, not an armature
                 elif ob and ( type(child.data) == type(None) or type(child.data) == bpy.types.Mesh ) :
                     #print('  child data type: %s'%type(child.data))
-                        
                     child.parent = ob
                     #print('%s parented to %s'%(child.name,ob.name))
                 
@@ -743,15 +743,10 @@ BINARY FORMAT
             else :
                  if show_geninfo : print('%sreturned %s, nothing'%(tab,child))
 
-                    
-        #print('  childs %s'%matchilds)            
-        #if len(matchilds) :
-        #    ob = [ ob, matchilds ]
-
         #print('>> %s return %s'%(field,ob))
-        return ob if ob else False
+        return ob# if ob else False
 
-    # token type = mesh
+    # build from mesh token type
     def getMesh(obname,tokenname,debug = False):
     
         if debug : print('\nmesh name : %s'%tokenname)
@@ -793,33 +788,33 @@ BINARY FORMAT
                 # mat can exist but with no datas so we prepare the mat slot
                 # with dummy ones
                 for slot in range(nbslots) :
-                    matslots.append('noname%s'%slot )
+                    matslots.append('dXnoname%s'%slot )
         
                 # length does not match (could be tuned more, need more cases)
                 if len(facemats) != len(faces) :
                     facemats = [ facemats[0] for i in faces ]
 
-                # seek for materials then textures if any mapped
-                # in this mesh.
-                # no type test, only one option type : 'Material'
+                # seek for materials then textures if any mapped in this mesh.
+                # no type test, only one option type in token meshmateriallist : 'Material'
                 for slotid, matname in enumerate(getChilds(childname)) :
                     
-                    # rename the dummy with theright name
+                    # rename dummy mats with the right name
                     matslots[slotid] = matname
 
-                    #if debug : print(matslots)
                     # blender material creation (need tuning)
                     mat = bel.material.new(matname,naming_method)
+                    matslots[slotid] = mat.name
+                    
                     if naming_method != 1 :
-                    #if matname not in bpy.data.materials :
-                        #mat = bpy.data.materials.new(name=matname)
+                        print('matname : %s'%matname)
                         (diffuse_color,alpha), power, specCol, emitCol = readToken(matname)
                         #if debug : print(diffuse_color,alpha, power, specCol, emitCol)
                         mat.diffuse_color = diffuse_color
                         mat.diffuse_intensity = power
                         mat.specular_color = specCol
+                        # dX emit don't use diffuse color but is a color itself
+                        # convert it to a kind of intensity 
                         mat.emit = (emitCol[0] + emitCol[1] + emitCol[2] ) / 3
-                        # or mat.emit ?
                         
                         if alpha != 1.0 :
                             mat.use_transparency = True
@@ -831,34 +826,50 @@ BINARY FORMAT
             
                         # texture
                         # only 'TextureFilename' can be here, no type test
+                        # textures have no name in .x so we build 
+                        # image and texture names from the image file name
+                        # bdata texture slot name = bdata image name
+                        btexnames = []
                         for texname in getChilds(matname) :
+                            
+                            # create/rename/reuse etc corresponding data image
+                            # (returns False if not found)
                             [filename] = readToken(texname)
-                            #if debug : print(path+'/'+filename)
-                            if filename not in bpy.data.images :
-                                img = bel.image.new(path+'/'+filename)
-                            else : img = bpy.data.images[filename]
-                            if img :
-                                if filename not in bpy.data.textures :
-                                    img = bel.image.new(path+'/'+filename)
-                                    tex = bpy.data.textures.new(name=filename,type='IMAGE')
-                                    tex.image = img
-                                    tex.use_alpha = transp
-                                    tex.use_preview_alpha = transp
-                                else :
-                                    tex = bpy.data.textures[filename]
-                                    
-                                texslot = mat.texture_slots.create(index=0)
-                                texslot.texture = tex
-                                texslot.texture_coords = 'UV'
-                                texslot.uv_layer = 'UV0'
-                                texslot.use_map_alpha = transp
-                                texslot.alpha_factor = alpha
+                            img = bel.image.new(path+'/'+filename)
+                            
+                            if img == False :
+                                imgname = 'not_found'
+                            else :
+                                imgname = img.name
                                 
-                    else : mat = bpy.data.materials[matname]
-                    
-                for matname in matslots :
+                            print('texname : %s'%texname)
+                            print('filename : %s'%filename)
+                            print('btex/img name : %s'%imgname)
+                            
+                            # associated texture (no naming check.. maybe tune more)
+                            # tex and texslot are created even if img not found
+                            if imgname in bpy.data.textures and ( img == False or bpy.data.textures[imgname].image == img ) :
+                                tex = bpy.data.textures[imgname]
+                            else :
+                                tex = bpy.data.textures.new(name=imgname,type='IMAGE')
+                                if img : tex.image = img
+                                
+                            tex.use_alpha = transp
+                            tex.use_preview_alpha = transp
+                                
+                            # then create texture slot
+                            texslot = mat.texture_slots.create(index=0)
+                            texslot.texture = tex
+                            texslot.texture_coords = 'UV'
+                            texslot.uv_layer = 'UV0'
+                            texslot.use_map_alpha = transp
+                            texslot.alpha_factor = alpha
+
+                # create remaining dummy mat
+                for slotid, matname in enumerate(matslots) :
                     if matname not in bpy.data.materials :
-                        mat = bpy.data.materials.new(name=matname)
+                        mat = bel.material.new(matname,naming_method)
+                        matslots[slotid] = mat.name
                         
                 if debug : print('matslots : %s'%matslots)
                 

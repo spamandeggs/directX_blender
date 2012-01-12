@@ -3,7 +3,7 @@
 from os import path as os_path, listdir as os_listdir
 from bpy import path as bpy_path
 
-# cross platform paths
+# cross platform paths (since ms conform to / path ;) )
 # maybe add utf8 replace to old ascii blender builtin
 # // can be omitted for relative
 def clean(path) :
