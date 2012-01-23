@@ -36,9 +36,11 @@ import bel.image
 import bel.uv
 import bel.material
 import bel.ob
+import bel.fs
 
 from .templates_x import *
 
+'''
 # just a temp hack to reload bel everytime
 import imp
 imp.reload(bel)
@@ -48,6 +50,7 @@ imp.reload(bel.material)
 imp.reload(bel.mesh)
 imp.reload(bel.ob)
 imp.reload(bel.uv)
+'''
 
 ###################################################
 
@@ -81,16 +84,7 @@ def load(operator, context, filepath,
     rootTokens = []
     namelookup = {}
     imgnamelookup = {}
-    
     chunksize = int(chunksize)
-
-    # remove for production
-    imp.reload(bel.mesh)
-    imp.reload(bel.image)
-    imp.reload(bel.uv)
-    imp.reload(bel.ob)
-    imp.reload(bel.material)
-    
     reserved_type = (
         'dword',
         'float',
@@ -223,6 +217,8 @@ BINARY FORMAT
             lines, trunkated = nextFileChunk(data,trunkated)
             if lines == None : break
             for l in lines :
+                
+                # compute pointer position
                 ptr += eol
                 c += 1
                 eol = len(l) + 1
@@ -230,10 +226,16 @@ BINARY FORMAT
                 #if l != '' : print('***',l)
                 #if l == ''  : break
                 l = l.strip()
+                
                 # remove blank and comment lines
                 if l == '' or re.match(r_ignore,l) :
-                    #print('comment line %s'%l)
                     continue
+                
+                # one line token cases level switch
+                if previouslvl :
+                    lvl -= 1
+                    previouslvl = False
+                
                 #print('%s lines in %.2f\''%(c,time.clock()-t),end='\r')
                 #print(c,len(l)+1,ptr,data.tell())
                 if '{' in l :
@@ -253,12 +255,12 @@ BINARY FORMAT
                     ## look for {references}
                     if re.match(r_refsectionname,l) :
                         refname = namelookup[ l[1:-1].strip() ]
-                        #print('FOUND reference to %s in %s at line %s'%(refname,tree[lvl],c))
+                        #print('FOUND reference to %s in %s at line %s (level %s)'%(refname,tree[lvl-1],c,lvl))
                         #tree = tree[0:lvl]
-                        parent = tree[lvl]
+                        parent = tree[lvl-1]
                         # tag it as a reference, since it's not exactly a child.
                         # put it in childs since order can matter in sub tokens declaration
-                        tokens[parent]['childs'].append('*'+refname) 
+                        tokens[parent]['childs'].append('*'+refname)
                         if refname not in tokens :
                             print('reference to %s done before its declaration (line %s)\ncreated dummy'%(refname,c))
                             tokens[refname] = {}
@@ -266,7 +268,7 @@ BINARY FORMAT
                         else : tokens[refname]['users'].append(parent)
                         continue
     
-                ## look for any token { or only Mesh in quickmode
+                ## look for any token or only Mesh token in quickmode
                 if re.match(r_sectionname,l) :
                     tokenname = getName(l,tokens)
                     #print('FOUND %s %s %s %s'%(tokenname,c,lvl,tree))
@@ -294,14 +296,9 @@ BINARY FORMAT
                     tree.append(tokenname)
                     if lvl > 1 and quickmode == False :
                         tokens[parent]['childs'].append(tokenname)
-                        
-                # one line token cases level switch
-                if previouslvl :
-                    lvl -= 1
-                    previouslvl = False
-
-        return tokens, templates, tokentypes
                     
+        return tokens, templates, tokentypes
+        
     ## returns file binary chunks
     def nextFileChunk(data,trunkated=False,chunksize=1024) :
         if chunksize == 0 : chunk = data.read()
@@ -327,7 +324,8 @@ BINARY FORMAT
     # for blender, referenced token in x should be named and unique..
     def getName(l,tokens) :
         xnam = l.split(' ')[1].strip()
-        if xnam[0] == '{' : xnam = ''
+        
+        #if xnam[0] == '{' : xnam = ''
         if xnam and xnam[-1] == '{' : xnam = xnam[:-1]
         
         name = xnam
@@ -369,13 +367,6 @@ BINARY FORMAT
                 
                 if fi == len(field) - 1 and len(tokens[tokenname]['childs']) == 0 :
                     print('%s.%s'%(line,tab))
-    
-           
-                       
-    ## converts directX 3d vectors to blender 3d vectors
-    #def Vector3d(string) :
-    #    co = string.split(';')
-    #    return Vector((float(co[0]), float(co[1]), float(co[2])))
     
     ## remove eol, comments, spaces from a raw block of datas
     def cleanBlock(block) :
@@ -640,14 +631,16 @@ BINARY FORMAT
                 # object and mesh naming :
                 # if parent frame has several meshes : obname = meshname = mesh token name,
                 # if parent frame has only one mesh  : obname = parent frame name, meshname =  mesh token name.
-                meshcount = 0
-                for child in getChilds(parentname) :
-                    if tokens[child]['type'] == 'mesh' : 
-                        meshcount += 1
-                        if meshcount == 2 :
-                            parentname = tokenname
-                            break
-                if parentname == '' : parentname = tokenname
+                if parentname :
+                    meshcount = 0
+                    for child in getChilds(parentname) :
+                        if tokens[child]['type'] == 'mesh' : 
+                            meshcount += 1
+                            if meshcount == 2 :
+                                parentname = tokenname
+                                break
+                else : parentname = tokenname
+                
                 ob = getMesh(parentname,tokenname)
                 obs.append(ob)
 
@@ -806,7 +799,7 @@ BINARY FORMAT
                     matslots[slotid] = mat.name
                     
                     if naming_method != 1 :
-                        print('matname : %s'%matname)
+                        #print('matname : %s'%matname)
                         (diffuse_color,alpha), power, specCol, emitCol = readToken(matname)
                         #if debug : print(diffuse_color,alpha, power, specCol, emitCol)
                         mat.diffuse_color = diffuse_color
@@ -842,9 +835,9 @@ BINARY FORMAT
                             else :
                                 imgname = img.name
                                 
-                            print('texname : %s'%texname)
-                            print('filename : %s'%filename)
-                            print('btex/img name : %s'%imgname)
+                            #print('texname : %s'%texname)
+                            #print('filename : %s'%filename)
+                            #print('btex/img name : %s'%imgname)
                             
                             # associated texture (no naming check.. maybe tune more)
                             # tex and texslot are created even if img not found
@@ -938,7 +931,9 @@ BINARY FORMAT
                 walk_dXtree(tokens.keys())
             
             ## DATA IMPORTATION
-            if show_geninfo : print('Root frames :\n %s'%rootTokens)
+            if show_geninfo : 
+                print(tokens)
+                print('Root frames :\n %s'%rootTokens)
             if parented :
                 import_dXtree(rootTokens)
             else :
@@ -947,14 +942,16 @@ BINARY FORMAT
                     # object and mesh naming :
                     # if parent frame has several meshes : obname = meshname = mesh token name,
                     # if parent frame has only one mesh  : obname = parent frame name, meshname =  mesh token name.
-                    meshcount = 0
-                    for child in getChilds(obname) :
-                        if tokens[child]['type'] == 'mesh' : 
-                            meshcount += 1
-                            if meshcount == 2 :
-                                obname = tokenname
-                                break
-                    if obname == '' : obname = tokenname
+                    if obname :
+                        meshcount = 0
+                        for child in getChilds(obname) :
+                            if tokens[child]['type'] == 'mesh' : 
+                                meshcount += 1
+                                if meshcount == 2 :
+                                    obname = tokenname
+                                    break
+                    else : obname = tokenname
+
                     ob = getMesh(obname,tokenname,show_geninfo)
                     ob.matrix_world = global_matrix
                     

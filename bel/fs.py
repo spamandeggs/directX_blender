@@ -1,5 +1,5 @@
 # v0.1
-
+import bpy
 from os import path as os_path, listdir as os_listdir
 from bpy import path as bpy_path
 
@@ -47,3 +47,25 @@ def scanDir(path,ext='all') :
             print('folder %s/%s :'%(path,item))
             files.extend(scanDir(path + '/' + item))
     return files
+
+def saveOptions(operator_name, tokens, filename='last_run'):
+    target_path = os_path.join("operator", operator_name)
+    target_path = os_path.join("presets", target_path)
+    target_path = bpy.utils.user_resource('SCRIPTS',target_path,create=True)
+    if target_path:
+        filepath = os_path.join(target_path, filename) + ".py"
+        file_preset = open(filepath, 'w')
+        file_preset.write("import bpy\nop = bpy.context.active_operator\n\n")
+        properties_blacklist = bpy.types.Operator.bl_rna.properties.keys()
+        for key, value in tokens.items() :
+            if key not in properties_blacklist :
+                # convert thin wrapped sequences to simple lists to repr()
+                try:
+                    value = value[:]
+                except:
+                    pass
+    
+                file_preset.write("op.%s = %r\n" % (key, value))
+
+        file_preset.close()
+    

@@ -3,9 +3,9 @@ bl_info = {
     "name": "DirectX Importer",
     "description": "Import directX Model Format (.x)",
     "author": "Littleneo (Jerome Mahieux)",
-    "version": (0, 15),
-    "blender": (2, 6, 0),
-    "api": 41098,
+    "version": (0, 16),
+    "blender": (2, 6, 1),
+    "api": 42615,
     "location": "File > Import > DirectX (.x)",
     "warning": "",
     "wiki_url": "https://github.com/littleneo/directX_blender/wiki",
@@ -33,6 +33,7 @@ from bpy_extras.io_utils import (ExportHelper,
                                  path_reference_mode,
                                  axis_conversion,
                                  )
+import bel
 '''
 class DisplayTree(bpy.types.Operator) :
     bl_idname = 'city.selector'
@@ -76,9 +77,9 @@ class ImportX(bpy.types.Operator, ImportHelper):
             )
     
     parented = BoolProperty(
-            name="Object Relationships (experimental)",
-            description="also import empties and rebuild parent-childs relations",
-            default=False,
+            name="Object Relationships",
+            description="import armatures, empties, rebuild parent-childs relations",
+            default=True,
             )
     
     bone_maxlength = FloatProperty(
@@ -189,9 +190,7 @@ class ImportX(bpy.types.Operator, ImportHelper):
             )
 
     def execute(self, context):
-        # print("Selected: " + context.active_object.name)
         from . import import_x
-
         if self.split_mode == 'OFF':
             self.use_split_objects = False
             self.use_split_groups = False
@@ -211,17 +210,22 @@ class ImportX(bpy.types.Operator, ImportHelper):
                                         ).to_4x4()
         keywords["global_matrix"] = global_matrix
 
+    
+        bel.fs.saveOptions('import_scene.x', self.as_keywords(ignore=(
+                                            "filter_glob",
+                                            "filepath",
+                                            )))
         return import_x.load(self, context, **keywords)
 
     def draw(self, context):
         layout = self.layout
         
+        # import box
         box = layout.box()
         col = box.column(align=True)
         col.label('Import Options :')  
         col.prop(self, "chunksize")
         col.prop(self, "use_smooth_groups")
-        col.prop(self, "quickmode")
         actif = not(self.quickmode)
         row = col.row()
         row.enabled = actif
@@ -230,18 +234,22 @@ class ImportX(bpy.types.Operator, ImportHelper):
             row = col.row()
             row.enabled = actif
             row.prop(self, "bone_maxlength")      
+        col.prop(self, "quickmode")
         
+        # source orientation box
         box = layout.box()
         col = box.column(align=True)
         col.label('Source Orientation :')      
         col.prop(self, "axis_forward")
         col.prop(self, "axis_up")
 
+        # naming methods box
         box = layout.box()
         col = box.column(align=True)
         col.label('Naming Method :')
         col.props_enum(self,"naming_method")
 
+        # info/debug box
         box = layout.box()
         col = box.column(align=True)
         col.label('Info / Debug :')
