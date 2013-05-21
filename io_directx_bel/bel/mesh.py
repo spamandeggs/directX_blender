@@ -3,10 +3,10 @@
 import bpy
 import mathutils
 from mathutils import *
+import bmesh
 
-import io_directx_bel.bel.uv
-import io_directx_bel.bel.ob
-from io_directx_bel import bel
+from . import uv as buv
+from . import ob as bob
 
 debuglevel = 0
 '''
@@ -22,8 +22,35 @@ yes :
 for now, and mesh data, 0 2 or 3
 '''
 
-## material MUST exist before creation of material slots
-## map only uvmap 0 to its image defined in mat  for now (multitex view)
+'''
+given name < 21
+if material name exists :
+naming_method = 0   blender default (increment name)
+naming_method = 1   do nothing, abort creation and use existing
+naming_method = 2   create new, rename existing, 
+naming_method = 3   create new, replace existing
+'''
+
+def new(name, naming_method=0) :
+    if name not in bpy.data.meshes or naming_method == 0:
+        return bpy.data.meshes.new(name=name)
+
+    if naming_method == 1 :
+        return bpy.data.meshes[name]
+
+    if naming_method == 2 :
+        me = bpy.data.meshes.new(name=name)
+        me.name = name
+        return me
+    
+    # naming_method = 3 : replace, keep users
+    me = bpy.data.meshes[name]
+    bm = bmesh.new()
+    bm.to_mesh(me)
+    return me
+
+## material listed in matslots must exist before creation of material slots
+
 def write(obname,name, 
           verts=[], edges=[], faces=[], 
           matslots=[], mats=[], uvs=[], 
@@ -46,10 +73,10 @@ def write(obname,name,
     if naming_method == 3 :
         if obj : 
             #print('remove ob %s'%obj.name)
-            bel.ob.remove(obj,False)
+            bob.remove(obj,False)
         if me :
             #print('remove me %s'%me.name)
-            bel.ob.removeData(me)
+            bob.removeData(me)
     
 
     me = bpy.data.meshes.new(name)
@@ -59,7 +86,7 @@ def write(obname,name,
     me.update()
 
     if smooth : shadesmooth(me)
-    
+
     # material slots
     matimage=[]
     if len(matslots) > 0 :
@@ -86,15 +113,15 @@ def write(obname,name,
                             continue
             matimage.append(False)
 
-    # map a material to each face
-    if len(mats) > 0 :
-        for fi,f in enumerate(me.faces) :
-            f.material_index = mats[fi]
-
     # uvs
     if len(uvs) > 0 :
-        bel.uv.write(me, uvs, matimage)
+        #buv.write(me, uvs, matimage)
+        buv.flatwrite(me, uvs)
 
+    # map a material to each face
+    if len(mats) > 0 :
+        for fi,f in enumerate(me.polygons) :
+            f.material_index = mats[fi]
 
     obj = bpy.data.objects.new(name=obname, object_data=me)
     if naming_method != 0 :
@@ -124,17 +151,17 @@ def write(obname,name,
 def shadesmooth(me,lst=True) :
     if type(lst) == list :
         for fi in lst :
-            me.faces[fi].use_smooth = True
+            me.polygons[fi].use_smooth = True
     else :
-        for fi,face in enumerate(me.faces) :
+        for fi,face in enumerate(me.polygons) :
             face.use_smooth = True
  
 def shadeflat(me,lst=True) :
     if type(lst) == list :
         for fi in lst :
-            me.faces[fi].use_smooth = False
+            me.polygons[fi].use_smooth = False
     else :
-        for fi,face in enumerate(me.faces) :
+        for fi,face in enumerate(me.polygons) :
             face.use_smooth = False
 
 def weightsadd(ob, groupname, vindices, vweights=False) :
