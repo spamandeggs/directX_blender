@@ -41,7 +41,10 @@ def new(path, name=False, relative = True, premul = True) :
     # finally :
     img = bpy.data.images.load(filepath=path)
     img.name = name
-    img.use_premultiply = premul
+	
+    if premul == True :
+        img.alpha_mode = 'PREMUL'
+	
     return img
 
 
@@ -161,7 +164,7 @@ def applyShader(mat,config) :
 
     # IMAGE
     if type(img) != type(None) :
-        img.use_premultiply = True
+        img.alpha_mode = 'PREMUL'
 
 def BSshader(nodes,pointer) :
     tkm = bpy.context.scene.tkm
@@ -235,7 +238,7 @@ def BSshader(nodes,pointer) :
                 return mat
             img = bpy.data.images.load(filepath=imgpath+ext)
             img.name = imgname
-            img.use_premultiply = True
+            img.alpha_mode = 'PREMUL'
         else : img = bpy.data.images[imgname]
         
         '''
